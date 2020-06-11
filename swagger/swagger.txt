@@ -1,0 +1,234 @@
+# SpringBoot集成Swagger
+
+1.新建一个SpringBoot-web项目
+
+2.导入相关依赖
+
+```xml
+<!-- https://mvnrepository.com/artifact/io.springfox/springfox-swagger-ui -->
+<dependency>
+    <groupId>io.springfox</groupId>
+    <artifactId>springfox-swagger-ui</artifactId>
+    <version>2.9.2</version>
+</dependency>
+<!-- https://mvnrepository.com/artifact/io.springfox/springfox-swagger2 -->
+<dependency>
+    <groupId>io.springfox</groupId>
+    <artifactId>springfox-swagger2</artifactId>
+    <version>2.9.2</version>
+</dependency>
+
+```
+
+3.编写一个hello工程
+
+4.配置Swagger==>Config
+
+5.测试运行http://localhost:8080/swagger-ui.html
+
+```java
+package com.swag.swagger.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.service.Contact;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
+
+import java.util.ArrayList;
+
+/**
+ * packageName:com.swag.swagger.config
+ * 编辑人:Foam番茄
+ * time:2020/04/12/2020/4/12/18:24
+ * projectName:swagger-demo
+ */
+@Configuration
+@EnableSwagger2//开启swagger2
+public class swaggerConfig {
+
+
+    /**
+     * 配置了swagger的Docket的bean实例
+     * @return
+     */
+    /*@Bean
+    public Docket docket(){
+        return new Docket(DocumentationType.SWAGGER_2)
+                .apiInfo(apinfo());
+    }*/
+
+    /**
+     * 配置swagger信息
+     * @return
+     */
+    private ApiInfo apinfo(){
+
+        //作者信息
+        Contact contact=new Contact("Foam","https://www.baidu.com","1742379947@qq.com");
+
+        return new ApiInfo(
+                "Foam的api文档",
+                "用来测试api接口",
+                "v1.0",
+                "https://www.baidu.com",
+                contact,
+                "Apache 2.0",
+                "http://www.apache.org/licenses/LICENSE-2.0",
+                new ArrayList());
+    }
+}
+
+```
+
+## swagger配置扫描接口
+
+Docket.select()
+
+系统过滤
+
+```java
+/**
+     * 配置了swagger的Docket的bean实例
+     * @return
+     */
+    @Bean
+    public Docket docket(){
+        return new Docket(DocumentationType.SWAGGER_2)
+                .apiInfo(apinfo()).select()
+                //RequestHandlerSelectors.配置要扫描接口的方式
+                //basePackage 指定要扫描的包
+                //any() 扫描全部
+                //none() 不扫描
+                //withClassAnnotation  扫描类上的注解
+                //apis(RequestHandlerSelectors.withClassAnnotation(GetMapping.class))
+                //withMethodAnnotation  扫描方法上的注解
+                .apis(RequestHandlerSelectors.basePackage("com.swag.swagger"))
+                //paths() 过滤路径
+                //.paths(PathSelectors.ant("/Foam/**"))
+                .build();
+    }
+```
+
+配置是否启动swagger
+
+![image-20200412232146285](C:\Users\spor-wen10\AppData\Roaming\Typora\typora-user-images\image-20200412232146285.png)
+
+切换环境使用
+
+1.判断是否是生产环境
+
+2.注入enable
+
+```java
+package com.swag.swagger.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
+import org.springframework.web.bind.annotation.GetMapping;
+import springfox.documentation.builders.PathSelectors;
+import springfox.documentation.builders.RequestHandlerSelectors;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.service.Contact;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
+
+import java.util.ArrayList;
+
+/**
+ * packageName:com.swag.swagger.config
+ * 编辑人:Foam番茄
+ * time:2020/04/12/2020/4/12/18:24
+ * projectName:swagger-demo
+ */
+@Configuration
+@EnableSwagger2//开启swagger2
+public class swaggerConfig {
+
+
+
+    /**
+     * 配置了swagger的Docket的bean实例
+     * @return
+     */
+    @Bean
+    public Docket docket(Environment environment){
+        /**
+         * 获取返回dev的环境
+         */
+        Profiles profiles=Profiles.of("dev","pro");
+        //获取项目的环境
+        Boolean falg=environment.acceptsProfiles(profiles);
+        return new Docket(DocumentationType.SWAGGER_2)
+                .apiInfo(apinfo())
+                .groupName("Foam")
+                .enable(falg)//关闭swagger 浏览器不能访问
+                .select()
+                //RequestHandlerSelectors.配置要扫描接口的方式
+                //basePackage 指定要扫描的包
+                //any() 扫描全部
+                //none() 不扫描
+                //withClassAnnotation  扫描类上的注解
+                //apis(RequestHandlerSelectors.withClassAnnotation(GetMapping.class))
+                //withMethodAnnotation  扫描方法上的注解
+                .apis(RequestHandlerSelectors.basePackage("com.swag.swagger"))
+                //paths() 过滤路径
+                //.paths(PathSelectors.ant("/Foam/**"))
+                .build();
+    }
+
+    @Bean
+    public Docket docket1(){
+        return  new Docket(DocumentationType.SWAGGER_2).groupName("A");
+    }
+
+    @Bean
+    public Docket docket2(){
+        return  new Docket(DocumentationType.SWAGGER_2).groupName("B");
+    }
+
+    @Bean
+    public Docket docket3(){
+        return  new Docket(DocumentationType.SWAGGER_2).groupName("C");
+    }
+    /**
+     * 配置swagger信息
+     * @return
+     */
+    private ApiInfo apinfo(){
+
+        //作者信息
+        Contact contact=new Contact("Foam","https://www.baidu.com","1742379947@qq.com");
+
+        return new ApiInfo(
+                "Foam的api文档",
+                "用来测试api接口",
+                "v1.0",
+                "https://www.baidu.com",
+                contact,
+                "Apache 2.0",
+                "http://www.apache.org/licenses/LICENSE-2.0",
+                new ArrayList());
+    }
+}
+
+```
+
+
+
+实体类配置
+
+总结
+
+1.我们可以通过swagger给一些比较难理解的属性或者接口，增加注释信息
+
+2.接口文档实时更新
+
+3.可以在线测试
+
+【注意】在正式发布的时候，关闭swagger！！出于安全考虑，而且节省运行的内存

@@ -1,0 +1,30 @@
+1.在index.html界面  直接输入html可以自动生成模板
+
+2.npm init -y     -y直接指把每一步的确认跳过
+
+![image-20200422112559596](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200422112559596.png)
+
+3.直接在这里可以执行命令
+
+var  全局   let   局部     const   常量
+
+4.二进制和八进制声明都是0开头
+
+二进制 Binary
+
+八进制 Octal
+
+0B010101  = 21
+
+0O666  =  438
+
+5.现在判断都被封装
+
+let a=11/4
+
+Number.isFinite(a)
+
+6.
+
+- export :负责进行模块化，也是模块的输出。
+- import : 负责把模块引，也是模块的引入操作。

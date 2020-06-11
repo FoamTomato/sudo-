@@ -1,0 +1,23 @@
+**Java Caching定义了5个核心接口，分别是CachingProvider, CacheManager, Cache, Entry 和 Expiry。**
+
+1. CachingProvider定义了创建、配置、获取、管理和控制多个CacheManager。一个应用可以在运行期访问多个CachingProvider。（ 缓存提供者）
+2. CacheManager定义了创建、配置、获取、管理和控制多个唯一命名的Cache，这些Cache存在于CacheManager的上下文中。一个CacheManager仅被一个CachingProvider所拥有。(缓存管理器)
+3. Cache是一个类似Map的数据结构并临时存储以Key为索引的值。一个Cache仅被一个CacheManager所拥有。(缓存组件)
+4. Entry是一个存储在Cache中的key-value对。(记录)
+5. Expiry 每一个存储在Cache中的条目有一个定义的有效期。一旦超过这个时间，条目为过期的状态。一旦过期，条目将不可访问、更新和删除。缓存有效期可以通过ExpiryPolicy设置。(有效期)
+
+ ![img](https://img2018.cnblogs.com/blog/1429976/201904/1429976-20190423143953487-894773441.png)
+
+要使用缓存直接从缓存管理器中获取就行了
+
+**特性摘要**
+
+对于那些熟悉Spring的缓存注解的，下表描述了Spring注解与JSR-107版本之间的主要区别：
+
+| Spring                           | JSR-107             | 备注                                                         |
+| -------------------------------- | ------------------- | ------------------------------------------------------------ |
+| **@Cacheable**                   | **@CacheResult**    | 非常相似，@CacheResult可以缓存特定的异常并强制执行该方法，而不管缓存的内容如何。 |
+| **@CachePut**                    | **@CachePut**       | Spring使用方法调用的结果更新缓存，JCache要求将其作为使用**@CacheValue**注解的参数传递给它； 由于这种差异，JCache允许在实际方法调用之前或之后更新缓存。 |
+| **@CacheEvict**                  | **@CacheRemove**    | 非常相似，当方法调用导致异常时，**@CacheRemove**支持条件驱逐。 |
+| **@CacheEvict(allEntries=true)** | **@CacheRemoveAll** | 请参阅**@CacheRemove**                                       |
+| **@CacheConfig**                 | **@CacheDefaults**  | 允许你以类似的方式配置相同的概念。                           |

@@ -1,0 +1,23 @@
+npm i bcrypt
+
+改模块用于做密码的散列
+
+![image-20200429181242074](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200429181242074.png)
+
+npm i jsonwebtoken
+
+安装token模块
+
+![image-20200429181841252](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200429181841252.png)
+
+![image-20200429182204422](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200429182204422.png)
+
+存储token
+
+npm install http-assert
+
+安装报错返回信息
+
+![image-20200429184319805](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200429184319805.png)
+
+![image-20200429184435443](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200429184435443.png)

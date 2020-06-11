@@ -1,0 +1,41 @@
+**Linux端口操作常见命令**
+
+一、查看哪些端口被打开 netstat -anp
+
+二、关闭端口号:iptables -A INPUT -p tcp --drop 端口号-j DROP
+
+iptables -A OUTPUT -p tcp --dport 端口号-j DROP
+
+三、打开端口号：iptables -I INPUT -ptcp --dport 端口号 -j ACCEPT
+
+四、以下是linux打开端口命令的使用方法。
+
+nc -lp 23 &(打开23端口，即telnet)
+
+netstat -an | grep 23 (查看是否打开23端口)
+
+五、linux打开端口命令每一个打开的端口，都需要有相应的监听程序才可以
+
+六、systemctl stop firewalld
+
+七、打开端口后保存 # iptables-save > /etc/sysconfig/iptables
+
+在/etc/rc.d/rc.local中加入/sbin/iptables-restore /etc/sysconfig/iptables
+
+（命令为# iptables-restore < /etc/sysconfig/iptables）
+
+可解决开放端口重启失效问题
+
+**CentOS7防火墙命令操作**
+
+CentOS 7.0默认使用的是firewall作为防火墙，这里改为iptables防火墙。
+
+打开3306端口：firewall-cmd --add-port=3306/tcp --permanent
+
+firewall：
+
+systemctl start firewalld.service#启动firewall
+
+systemctl stop firewalld.service#停止firewall
+
+systemctl disable firewalld.service#禁止firewall开机启动

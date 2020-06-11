@@ -1,0 +1,99 @@
+曾经在工作中遇到一个问题，就是需要提取字符串中每一个中括号里的内容，在网上搜了一下，发现用正则表达式可以提取中括号中的内容，具体实现如下：
+
+
+
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class ExtractMessage {
+
+	public static void main(String[] args) {
+		
+		String msg = "PerformanceManager[第1个中括号]Product[第2个中括号]<[第3个中括号]79~";
+		List<String> list = extractMessageByRegular(msg);
+		for (int i = 0; i < list.size(); i++) {
+			System.out.println(i+"-->"+list.get(i));
+		}
+	}
+	
+	/**
+	 * 使用正则表达式提取中括号中的内容
+	 * @param msg
+	 * @return 
+	 */
+	public static List<String> extractMessageByRegular(String msg){
+		
+		List<String> list=new ArrayList<String>();
+		Pattern p = Pattern.compile("(\\[[^\\]]*\\])");
+		Matcher m = p.matcher(msg);
+		while(m.find()){
+			list.add(m.group().substring(1, m.group().length()-1));
+		}
+		return list;
+	}
+
+}
+
+输出结果如下：
+0-->第1个中括号
+1-->第2个中括号
+2-->第3个中括号
+
+这样很快就完成了代码的工作，但是后来发现如果中括号中还包含中括号，正则表达式就失去作用了，我不得不自己想办法解决，经过研究终于招到了解决方法，具体实现如下：
+
+package com.perry.test;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class ExtractMessage {
+
+	public static void main(String[] args) {
+		
+		String msg = "PerformanceManager[第1个中括号]Product[第2个中括号[中括号中包含中括号]]<[第3个中括号]79~";
+		List<String> list = extractMessage(msg);
+		for (int i = 0; i < list.size(); i++) {
+			System.out.println(i+"-->"+list.get(i));
+		}
+	}
+	
+	/**
+	 * 提取中括号中内容，忽略中括号中的中括号
+	 * @param msg
+	 * @return
+	 */
+	public static List<String> extractMessage(String msg) {
+	 
+		List<String> list = new ArrayList<String>();
+		int start = 0;
+		int startFlag = 0;
+		int endFlag = 0;
+		for (int i = 0; i < msg.length(); i++) {
+			if (msg.charAt(i) == '[') {
+				startFlag++;
+				if (startFlag == endFlag + 1) {
+					start = i;
+				}
+			} else if (msg.charAt(i) == ']') {
+				endFlag++;
+				if (endFlag == startFlag) {
+					list.add(msg.substring(start + 1, i));
+				}
+			}
+		}
+		return list;
+	}
+
+}
+
+输出结果如下：
+0-->第1个中括号
+1-->第2个中括号[中括号中包含中括号]
+2-->第3个中括号
+
+主要思路就是遍历字符串，在中括号的开始和结束位置做标记计数，如果是中括号开始位置对应的结束位置，那么开始位置和结束位置的计数是一致的，这样截取的就是一个完整的中括号的内容。

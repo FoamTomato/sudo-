@@ -1,0 +1,248 @@
+**1.在maven中添加依赖**
+
+```xml
+	<!--Swagger2 Begin -->
+    <!--springfox的核心jar包-->
+    <dependency>
+      <groupId>io.springfox</groupId>
+      <artifactId>springfox-swagger2</artifactId>
+      <version>2.8.0</version>
+    </dependency>
+    <!--springfox-ui的jar包(里面包含了swagger的界面静态文件)-->
+    <dependency>
+      <groupId>io.springfox</groupId>
+      <artifactId>springfox-swagger-ui</artifactId>
+      <version>2.8.0</version>
+    </dependency>
+    <!--springfox依赖的jar包；如果你的项目中已经集成了无需重复-->
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
+      <version>2.9.0</version>
+    </dependency>
+    <!-- Swagger2 End -->
+
+```
+
+2.**创建专门得swagger包用于存放swagger的配置文件，非必须，但条理要清晰**
+
+```java
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.web.servlet.config.annotation.EnableWebMvc;
+import springfox.documentation.builders.ApiInfoBuilder;
+import springfox.documentation.builders.PathSelectors;
+import springfox.documentation.builders.RequestHandlerSelectors;
+import springfox.documentation.service.ApiInfo;
+import springfox.documentation.spi.DocumentationType;
+import springfox.documentation.spring.web.plugins.Docket;
+import springfox.documentation.swagger2.annotations.EnableSwagger2;
+
+/*重要！如果你的项目引入junit测试，此处需要使用@WebAppConfiguration，如果没有使用junit使用@Configuration(很多的博客都没有注明这个问题，为此我花了非常多的时间解决问题)*/
+@WebAppConfiguration
+@EnableSwagger2//重要！
+@EnableWebMvc
+@Configuration
+public class Swagger2Config {
+    @Bean
+    public Docket createRestApi() {
+        return new Docket(DocumentationType.SWAGGER_2)
+                .apiInfo(apiInfo())
+                .select()
+                .apis(RequestHandlerSelectors.basePackage("cn.yonyong.usetk.controller"))
+                .paths(PathSelectors.any())
+                .build();
+    }
+
+    private ApiInfo apiInfo() {
+        return new ApiInfoBuilder()
+                .title("iToken API 文档")
+                .description("iToken API 网关接口，http://www.funtl.com")
+                .termsOfServiceUrl("http://www.faramita.online")
+                .version("1.0.0")
+                .build();
+```
+
+3.**在springMVC的配置文件中添加swagger的配置**
+
+```xml
+<!--将静态资源交由默认的servlet处理-->
+<mvc:default-servlet-handler />
+<!--向容器自动注入配置-->
+<context:annotation-config />
+<!-- 自动扫描  @Controller 与 swagger.java -->
+<context:component-scan base-package="cn.yonyong.*.controller,cn.yonyong.usetk.config.swagger"/>
+<!--重要！配置swagger资源不被拦截-->
+<mvc:resources mapping="swagger-ui.html" location="classpath:/META-INF/resources/" />
+<mvc:resources mapping="/webjars/**" location="classpath:/META-INF/resources/webjars/" />
+```
+
+4.**修改web.xml文件中配置所有的请求都经DispatcherServlet处理**
+
+```xml
+<servlet-mapping>
+    <servlet-name>SpringMVC</servlet-name>
+    <url-pattern>/</url-pattern>
+</servlet-mapping>
+```
+
+5.controller**的配置**
+
+```java
+@Controller
+@RequestMapping("/user")
+@Api(value = "/user", tags = "User接口")
+public class UserController {
+
+    private static Logger logger = Logger.getLogger(UserController.class);
+    @Autowired
+    private UserService userService;
+
+    @RequestMapping(value = "/getUser/{id}",method = RequestMethod.GET)
+    @ResponseBody
+    @ApiOperation(value = "根据id获取用户信息", notes = "根据id获取用户信息", httpMethod = "GET", response = User.class)
+    public ResponseEntity<User> getUser(@PathVariable int id){
+        User user = userService.getUserById(id);
+        logger.info("controller:"+user);
+        return ResponseEntity.ok(user);
+    }
+}
+```
+
+6.**项目访问地址**
+
+```java
+//访问地址:[项目访问地址]/swagger-ui.html 
+//例如本地Tomcat运行swagger-demo,那么访问地址为：http://localhost:8080/swagger-demo/swagger-ui.html
+```
+
+7.api注解的详细讲解
+
+https://segmentfault.com/a/1190000010465989
+
+![image-20200414101600798](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200414101600798.png)
+
+在SpringMvc中的配置如下
+
+```java
+@Controller
+@RequestMapping(value = "/api/pet", produces = {APPLICATION_JSON_VALUE, APPLICATION_XML_VALUE})
+@Api(value = "/pet", description = "Operations about pets")
+public class PetController {
+
+}
+```
+
+## **`ApiOperation标记`**
+
+ApiOperation每一个url资源的定义,使用方式：
+
+```java
+@ApiOperation(
+          value = "Find purchase order by ID",
+          notes = "For valid response try integer IDs with value <= 5 or > 10\. Other values will generated exceptions",
+          response = Order,
+          tags = {"Pet Store"})
+```
+
+![image-20200414101730140](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200414101730140.png)
+
+在SpringMvc中的配置如下：
+
+```java
+@RequestMapping(value = "/order/{orderId}", method = GET)
+  @ApiOperation(
+      value = "Find purchase order by ID",
+      notes = "For valid response try integer IDs with value <= 5 or > 10\. Other values will generated exceptions",
+      response = Order.class,
+      tags = { "Pet Store" })
+   public ResponseEntity<Order> getOrderById(@PathVariable("orderId") String orderId)
+      throws NotFoundException {
+    Order order = storeData.get(Long.valueOf(orderId));
+    if (null != order) {
+      return ok(order);
+    } else {
+      throw new NotFoundException(404, "Order not found");
+    }
+  }
+```
+
+## **`ApiParam标记`**
+
+ApiParam请求属性,使用方式：
+
+```java
+public ResponseEntity<User> createUser(@RequestBody @ApiParam(value = "Created user object", required = true) User user)
+```
+
+![image-20200414101821648](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200414101821648.png)
+
+在SpringMvc中的配置如下：
+
+```java
+ public ResponseEntity<Order> getOrderById(
+      @ApiParam(value = "ID of pet that needs to be fetched", allowableValues = "range[1,5]", required = true)
+      @PathVariable("orderId") String orderId)
+```
+
+## **`ApiResponse`**
+
+ApiResponse：响应配置，使用方式：
+
+```java
+@ApiResponse(code = 400, message = "Invalid user supplied")
+```
+
+![image-20200414101858504](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200414101858504.png)
+
+在SpringMvc中的配置如下：
+
+```java
+@RequestMapping(value = "/order", method = POST)
+  @ApiOperation(value = "Place an order for a pet", response = Order.class)
+  @ApiResponses({ @ApiResponse(code = 400, message = "Invalid Order") })
+  public ResponseEntity<String> placeOrder(
+      @ApiParam(value = "order placed for purchasing the pet", required = true) Order order) {
+    storeData.add(order);
+    return ok("");
+  }
+```
+
+## **`ApiResponses`**
+
+ApiResponses：响应集配置，使用方式：
+
+```java
+@ApiResponses({ @ApiResponse(code = 400, message = "Invalid Order") })
+```
+
+![image-20200414101928799](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200414101928799.png)
+
+```java
+ @RequestMapping(value = "/order", method = POST)
+  @ApiOperation(value = "Place an order for a pet", response = Order.class)
+  @ApiResponses({ @ApiResponse(code = 400, message = "Invalid Order") })
+  public ResponseEntity<String> placeOrder(
+      @ApiParam(value = "order placed for purchasing the pet", required = true) Order order) {
+    storeData.add(order);
+    return ok("");
+  }
+```
+
+## **`ResponseHeader`**
+
+响应头设置，使用方法
+
+```java
+@ResponseHeader(name="head1",description="response head conf")
+```
+
+![image-20200414101955006](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200414101955006.png)
+
+在SpringMvc中的配置如下：
+
+```java
+@ApiModel(description = "群组")
+```
+

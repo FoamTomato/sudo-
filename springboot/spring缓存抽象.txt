@@ -1,0 +1,255 @@
+从3.1版开始，Spring Framework提供了对现有Spring应用程序透明地添加缓存的支持。 与事务支持类似，缓存抽象允许一致地使用各种缓存解决方案，而对代码的影响最小。
+
+从Spring 4.1开始，通过**JSR-107**注释和更多自定义选项的支持，缓存抽象得到了显着改进。
+
+> 抽象的核心是将缓存应用于Java方法，从而减少了基于缓存中可用信息的执行次数。也就是说，每次调用目标方法时，抽象都会应用缓存行为检查方法是否已经为给定的参数执行。如果有，则返回缓存的结果，而不必执行实际的方法;如果没有，则执行方法，缓存结果并返回给用户，以便在下次调用方法时返回缓存的结果。这样，对于给定的一组参数，昂贵的方法(CPU或IO绑定)只能执行一次，并且结果可以重用，而不必实际再次执行该方法。缓存逻辑被透明地应用，没有任何对调用程序的干扰。
+>
+
+就像Spring Framework中的其他服务一样，缓存服务是一种抽象（不是缓存实现），需要使用实际存储来存储缓存数据 - 也就是说，抽象使开发人员不必编写缓存逻辑 但不提供实际的存储。 这种抽象由**org.springframework.cache.Cache和org.springframework.cache.CacheManager**接口实现。
+
+> 这个抽象的一些实现可以直接使用：基于JDK **java.util.concurrent.ConcurrentMap**的缓存(即默认的缓存是基于JVM的ConcurrentMap)，Ehcache 2.x，Gemfire缓存，符合Caffeine和JSR-107的缓存（例如Ehcache 3.x）。 有关插入其他缓存存储/提供程序的更多信息，请参阅插入不同的后端缓存。
+>
+
+对于缓存声明，抽象提供了一组Java注释：
+
+**@Cacheable** 触发数据存储于缓存
+
+**@CacheEvic**t 触发删除缓存条目
+
+**@CachePut** 更新缓存而不会干扰方法执行
+
+**@Caching** 重新组合要在方法上应用的多个缓存操作
+
+**@CacheConfig** 在类级别共享一些常见的缓存相关设置
+
+
+
+**@ Cacheable**
+顾名思义，@ Cacheable用于划分可缓存的方法 - 即，将结果存储到缓存中的方法，以便在后续调用（具有相同的参数）时，返回缓存中的值而不必 实际执行该方法。
+
+**@CachePut**
+对于需要在不干扰方法执行的情况下更新缓存的情况，可以使用@CachePut批注。 也就是说，该方法将始终执行并将其结果放入缓存中（根据@CachePut选项）。 它支持与@Cacheable相同的选项
+
+**@CacheEvict**
+缓存抽象不仅允许缓存存储的填充，还允许驱逐。 此过程对于从缓存中删除陈旧或未使用的数据非常有用。 与@Cacheable相反，注释@CacheEvict划分了执行缓存逐出的方法，即用作从缓存中删除数据的触发器的方法。
+
+
+
+**@Caching**
+有些情况下需要指定相同类型的多个注释，例如@CacheEvict或@CachePut，例如因为条件或键表达式在不同的缓存之间是不同的。 @Caching允许在同一方法上使用多个嵌套的@ Cacheable，@ CachePut和@CacheEvict：
+
+基于内存ConcurrentMap的缓存实例
+
+```java
+@Slf4j
+@Service
+@CacheConfig(cacheNames = "coffee")
+public class CoffeeService {
+    @Autowired
+    private CoffeeRepository coffeeRepository;
+ /**
+ * 查询结果存储于缓存中
+ * @return List<Coffee>
+ */
+@Cacheable
+public List<Coffee> findAllCoffee() {
+    return coffeeRepository.findAll();
+}
+ 
+/**
+ * 剔除缓存
+ */
+@CacheEvict
+public void reloadCoffee() {
+}
+ 
+public Optional<Coffee> findOneCoffee(String name) {
+    ExampleMatcher matcher = ExampleMatcher.matching()
+            .withMatcher("name", exact().ignoreCase());
+    Optional<Coffee> coffee = coffeeRepository.findOne(
+            Example.of(Coffee.builder().name(name).build(), matcher));
+    log.info("Coffee Found: {}", coffee);
+    return coffee;
+}
+
+
+```
+```java
+@Slf4j
+@EnableTransactionManagement
+@SpringBootApplication
+@EnableJpaRepositories
+//开启缓存
+@EnableCaching(proxyTargetClass = true)
+public class SpringBucksApplication implements ApplicationRunner {
+	@Autowired
+	private CoffeeService coffeeService;
+public static void main(String[] args) {
+	SpringApplication.run(SpringBucksApplication.class, args);
+}
+ 
+@Override
+public void run(ApplicationArguments args) throws Exception {
+	log.info("Count: {}", coffeeService.findAllCoffee().size());
+	for (int i = 0; i < 10; i++) {
+		log.info("Reading from cache.");
+		coffeeService.findAllCoffee();
+	}
+	coffeeService.reloadCoffee();
+	log.info("Reading after refresh.");
+	coffeeService.findAllCoffee().forEach(c -> log.info("Coffee {}", c.getName()));
+}
+```
+}
+扩展
+启用Spring的注释驱动的缓存管理功能，类似于Spring的<cache：*> XML命名空间中的支持。 要与@Configuration类一起使用，如下所示：
+
+   @Configuration
+   @EnableCaching
+   public class AppConfig {
+
+```java
+   @Bean
+   public MyService myService() {
+       // configure and return a class having @Cacheable methods
+       return new MyService();
+   }
+  
+   @Bean
+   public CacheManager cacheManager() {
+       // configure and return an implementation of Spring's CacheManager SPI
+       SimpleCacheManager cacheManager = new SimpleCacheManager();
+       cacheManager.setCaches(Arrays.asList(new ConcurrentMapCache("default")));
+       return cacheManager;
+   }
+   }
+```
+
+
+基于xml的配置
+
+```xml
+  <beans>
+       <cache:annotation-driven/>
+       <bean id="myService" class="com.foo.MyService"/>
+       <bean id="cacheManager" class="org.springframework.cache.support.SimpleCacheManager">
+           <property name="caches">
+               <set>
+                   <bean class="org.springframework.cache.concurrent.ConcurrentMapCacheFactoryBean">
+                       <property name="name" value="default"/>
+                   </bean>
+               </set>
+           </property>
+       </bean>
+   </beans>
+```
+
+  在上述两种情况中，@ EnableCaching和<cache：annotation-driven />负责注册为注释驱动的缓存管理提供支持的必要Spring组件，例如CacheInterceptor和基于代理或基于AspectJ的建议。 调用@Cacheable方法时，拦截器进入调用堆栈。
+
+
+如果存在JSR-107 API和Spring的JCache实现，则还会注册管理标准高速缓存注释的必要组件。 这会创建基于代理或基于AspectJ的建议，当调用使用CacheResult，CachePut，CacheRemove或CacheRemoveAll注释的方法时，它会将拦截器编织到调用堆栈中。
+
+必须注册CacheManager类型的bean，因为框架没有合理的默认值可用作约定。 虽然<cache：annotation-driven>元素假定一个名为“cacheManager”的bean，但@EnableCaching按类型搜索缓存管理器bean。 因此，缓存管理器bean方法的命名并不重要。
+
+对于那些希望在@EnableCaching和要使用的确切缓存管理器bean之间建立更直接关系的人，可以实现CachingConfigurer回调接口。 请注意下面的@ Override-annotated方法：
+
+
+
+```java
+   
+
+   @Configuration
+   @EnableCaching
+   public class AppConfig extends CachingConfigurerSupport {
+  @Bean
+   public MyService myService() {
+       // configure and return a class having @Cacheable methods
+       return new MyService();
+   }
+  
+   @Bean
+   @Override
+   public CacheManager cacheManager() {
+       // configure and return an implementation of Spring's CacheManager SPI
+       SimpleCacheManager cacheManager = new SimpleCacheManager();
+       cacheManager.setCaches(Arrays.asList(new ConcurrentMapCache("default")));
+       return cacheManager;
+   }
+  
+   @Bean
+   @Override
+   public KeyGenerator keyGenerator() {
+       // configure and return an implementation of Spring's KeyGenerator SPI
+       return new MyKeyGenerator();
+   }
+   }
+```
+   
+
+根据Spring的KeyGenerator SPI，这允许自定义缓存密钥生成策略。 通常，@ EnableCaching将为此配置Spring的SimpleKeyGenerator，但在实现CachingConfigurer时，必须明确提供密钥生成器。 如果不需要自定义，则从此方法返回null或新的SimpleKeyGenerator（）。
+
+基于Redis的缓存
+#缓存类型。 默认情况下，根据环境自动检测
+**spring.cache.type=redis**
+**spring.cache.cache-names=coffee**
+#缓存过期时间
+**spring.cache.redis.time-to-live=5000**
+#是否允许缓存null
+**spring.cache.redis.cache-null-values=false**
+**spring.redis.host=localhost**
+
+```java
+@Slf4j
+@Service
+@CacheConfig(cacheNames = "coffee")
+public class CoffeeService {
+    @Autowired
+    private CoffeeRepository coffeeRepository;
+@Cacheable
+public List<Coffee> findAllCoffee() {
+    return coffeeRepository.findAll();
+}
+ 
+@CacheEvict
+public void reloadCoffee() {
+}
+ 
+public Optional<Coffee> findOneCoffee(String name) {
+    ExampleMatcher matcher = ExampleMatcher.matching()
+            .withMatcher("name", exact().ignoreCase());
+    Optional<Coffee> coffee = coffeeRepository.findOne(
+            Example.of(Coffee.builder().name(name).build(), matcher));
+    log.info("Coffee Found: {}", coffee);
+    return coffee;
+}
+}
+```
+
+
+
+```java
+@Slf4j
+@EnableTransactionManagement
+@SpringBootApplication
+@EnableJpaRepositories
+@EnableCaching(proxyTargetClass = true)
+public class SpringBucksApplication implements ApplicationRunner {
+	@Autowired
+	private CoffeeService coffeeService;
+public static void main(String[] args) {
+	SpringApplication.run(SpringBucksApplication.class, args);
+}
+ 
+@Override
+public void run(ApplicationArguments args) throws Exception {
+	log.info("Count: {}", coffeeService.findAllCoffee().size());
+	for (int i = 0; i < 5; i++) {
+		log.info("Reading from cache.");
+		coffeeService.findAllCoffee();
+	}
+	Thread.sleep(5_000);
+	log.info("Reading after refresh.");
+	coffeeService.findAllCoffee().forEach(c -> log.info("Coffee {}", c.getName()));
+}
+```
+

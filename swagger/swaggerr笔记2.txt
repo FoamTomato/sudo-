@@ -1,0 +1,79 @@
+# Swagger-UI
+
+## 1.背景知识
+
+随着互联网技术的发展，现在的网站架构基本都由原来的后端渲染，变成了：前端渲染，前后端分离的形态，而且前端技术和后端技术在各自的道路上越走越远
+
+前端和后端的唯一联系，变成了api接口；api文档编程了前后端开发人员联系的纽带，变得越来越重要，swagger就是一款让你更好的书写api文档的框架
+
+**传统的接口定义**
+
+api说明文档
+
+## 2.认识swagger
+
+Swagger是一个规范和完整的框架，用于生成，描述，调用和可视化restful风格的web服务，总体目标是使客户端和文件系统作为服务器以同样的速度来更新，文件的方法，参数和模型紧密集成到服务器端的代码，允许api来始终保持同步
+
+**作用**
+
+1.接口的文档在线自动生成
+
+2.功能测试
+
+**目标**
+
+swagger的目标是为restapis定义的一个标准的，与语言无关的接口，使人和计算机在看不到源码或者看不到文档或者不能通过网络流量监测的情况下能发现和理解各种服务的功能
+
+Swagger是一组开源项目，**其中主要项目如下**
+
+1.**Swagger-tools**：提供各种与Swagger进行集成和交互的工具。例如模式检验，Swagger1.2文档转换成Swagger2.0文档等功能
+
+2.**Swagger-core**：用于java/SCala的swagger实现，与JAX-RS(Jersey,Resteasy,CXF...),Servlets和Play框架进行集成
+
+3.**Swagger-js**:用于JavaScript的Swagger实现
+
+4.**Swagger-node-express**:Swagger模块，用于node.js的Express web应用框架
+
+5.**Swagger-ui**：一个无依赖的HTML,JS和CSS集合，可以为Swagger兼容API动态生成优雅文档
+
+6.**Swagger-codegen**：一个模板驱动引擎，通过分析用户Swagger资源生命以各种语言生成客户端代码
+
+## 3.使用
+
+**1.maven**依赖
+
+springfox-swagger2
+
+springfox-swagger-ui
+
+jackson-databind
+
+```java
+@Configuration
+@EnableSwagger2
+@EnableWebMvc
+```
+
+2.webMvcConfig配置
+
+```java
+@Configuration
+Class WebMvcConfig implements WebMvcConfigurer{
+	public void addResourceHandlers(ResourceHandlerRegistry registry){
+		registry.addResourceHandler("swagger-ui.html").
+		addResourceLocations("classpath:/META-INF/resources/");
+		
+		registry.addResourceHandler("/webjars/**")
+		.addResouceLocations("classpath:/META-INF/resources/webjars/")
+	}
+}
+```
+
+3.描述
+
+```
+@Api("用户集合")//描述controller
+@ApiOperation(value="获取用户列表",notes="获取所有用户的列表")
+@ApiImplicitParam(value="用户的ID",paramType="path")
+```
+

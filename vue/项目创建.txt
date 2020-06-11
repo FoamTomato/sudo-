@@ -1,0 +1,39 @@
+**创建项目**
+
+vue  create  product
+
+**初始化服务器**
+
+npm init -y
+
+**安装nodemon**
+
+npm install -g nodemon
+
+**安装elementui**
+
+vue add element
+
+**安装路由**
+
+vue add router
+
+**服务端安装模块**数据库，跨域模块
+
+npm i express@next mongoose cors
+
+**安装axios**
+
+cnpm install axios --save
+
+**指定连接才能查询**
+
+```js
+const mongoose = require('mongoose')
+
+const schema = new mongoose.Schema({},
+    { collection: 'viewList' })
+
+module.exports = mongoose.model('viewList', schema)
+```
+
