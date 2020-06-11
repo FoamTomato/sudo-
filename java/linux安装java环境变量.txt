@@ -1,0 +1,18 @@
+本次安装以linu64位操作系统为参考、安装jdk1.8
+一、安装前准备
+linux服务器一台 
+用root用户在/usr/local目录下新建java文件夹
+二、jdk下载
+如果linux服务器可以连接外网可以直接使用wget命令在oracle官网上下载，如不能访问外网则可以提前下载好用ftp工具穿至服务器的/usr/local/java文件夹下。wget下载命令如下：
+wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" https://download.oracle.com/otn-pub/java/jdk/8u191-b12/2787e4a523244c269598db4e85c51e0c/jdk-8u191-linux-x64.tar.gz
+下载后的文件后缀会带有下载参数，使用mv命令将文件重命名为.tar.gz格式的文件；在调用解压缩命令将压缩包解压至当前目录即可。tar -xzvf jdk-8u191-linux-x64.tar.gz
+三、环境变量配置
+编辑/etc/profile文件
+在文件的最后加入以下参数
+export JAVA_HOME=/usr/local/java/jdk1.8.0_91
+export JRE_HOME=${JAVA_HOME}/jre
+export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
+export PATH=${JAVA_HOME}/bin:$PATH
+
+保存并使用source /etc/profile 命令是修改的参数生效。
+执行java -version显示当前java版本则说明jdk安装配置成功。

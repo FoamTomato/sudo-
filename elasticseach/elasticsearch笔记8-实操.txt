@@ -1,0 +1,528 @@
+使用Elastic Search API 实现CRUD
+
+**添加索引**
+
+```json
+PUT /lib/
+{
+	"index":{
+		"number_of_shards":5,
+		"number_of_replicas":1
+	}
+
+}
+```
+
+成功返回
+
+**![image-20200418101158503](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200418101158503.png)**
+
+**直接创建索引**
+
+```
+PUT lib2
+```
+
+返回![image-20200418101320936](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200418101320936.png)
+
+**查看索引**
+
+```
+GET /lib/_settings
+```
+
+结果
+
+![image-20200418101431086](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200418101431086.png)
+
+**查看所有索引**
+
+```
+GET _all/_settings
+```
+
+**添加数据**指定id
+
+```json
+PUT /lib/user/1
+{
+  "first_name":"Jane",
+  "last_name":"Smith",
+  "age":22,
+  "about":"I like to collect rock albums",
+  "interests":["music"]
+}
+```
+
+**添加数据**不指定id
+
+```
+POST /lib/user/
+{
+  "first_name":"Jane",
+  "last_name":"Smith",
+  "age":23,
+  "about":"I like to collect rock albums",
+  "interests":["music"]
+}
+```
+
+**查询id为1**
+
+```
+GET /lib/user/1
+```
+
+**查看指定信息**
+
+```
+GET /lib/user/1?_source=age,about
+```
+
+**更新文档**
+
+```
+PUT /lib/user/1
+{
+  "first_name":"Janes",
+  "last_name":"Smith",
+  "age":22,
+  "about":"I like to collect rock albums",
+  "interests":["music"]
+}
+```
+
+![image-20200418102346029](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200418102346029.png)
+
+**修改**
+
+```
+POST /lib/user/1/_update
+{
+  "doc":{
+    "age":11
+  }
+}
+```
+
+**删除**
+
+```
+DELETE /lib/user/1
+```
+
+**删除索引**
+
+```
+DELETE lib2
+```
+
+### 批量获取文档
+
+使用es提供的Multi Get API
+
+使用Multi Get API 可以通过索引名，类型名，文档id一次得到一个文档集合，文档可以来自同一个索引库，也可以来自不同索引库
+
+使用curl命令
+
+```
+curl "http://192.168.25.131:9200/_mget" -d'{
+"docs":[
+{
+"_index":"lib",
+"_type":"user",
+"_id":1
+},
+{
+"_index":"lib",
+"_type":"user",
+"_id":2
+}
+]
+}
+```
+
+在客户端工具中
+
+GET /_mget
+
+```
+{
+"docs":[
+{
+"_index":"lib",
+"_type":"user",
+"_id":1
+},
+{
+"_index":"lib",
+"_type":"user",
+"_id":2
+},
+{
+"_index":"lib",
+"_type":"user",
+"_id":3
+}
+]
+}
+```
+
+获取指定文档数值
+
+```
+GET /_mget
+{
+"docs":[
+{
+"_index":"lib",
+"_type":"user",
+"_id":1,
+"_source":"interests"
+},
+{
+"_index":"lib",
+"_type":"user",
+"_id":2,
+"_source":["age","interests"]
+}
+]
+}
+```
+
+同索引同类型获取
+
+```
+GET /lib/user/_mget
+{
+"docs":[
+{
+"_id":1,
+},
+{
+"_type":"user",
+"_id":2
+}
+]
+}
+```
+
+简化
+
+```
+GET /lib/user/_mget
+{
+"ids":["1","2"]
+}
+```
+
+### 使用Bulk API实现批量操作
+
+> bulk的格式
+>
+> {action:{metadata}}\n
+>
+> {requstbody}\n
+>
+> action:{行为}
+>
+> create:文档不存在时创建
+>
+> update:更新文档
+>
+> index:创建新文档或替换已有文档
+>
+> delete:删除一个文档
+>
+> metadata:\_index,\_type,\_id
+>
+> create 和 index 的区别
+>
+> 如果数据存在，使用create操作失败，会提示文档已经存在，使用index则可以成功运行
+
+实例：
+
+{"delete":{"\_index":"lib","\_type":"user","\_id":"1"}}
+
+批量添加：
+
+```
+POST /lib2/books/_bulk
+
+{"index":{"\_id":1}}
+
+{"title":"java","price":55}
+
+{"index":{"\_id":2}}
+
+{"title":"html5","price":45}
+
+{"index":{"\_id":3}}
+
+{"title":"css","price":35}
+```
+
+批量获取：
+
+```
+GET /lib2/books/_mget
+{
+  "ids":["1","2","3"]
+}
+```
+
+同时执行
+
+```
+POST /lib2/books/_bulk
+{"delete":{"_index":"lib2","_type":"books","_id":4}}
+{"create":{"_index":"tt","_type":"ttt","_id":100}}
+{"name":"lisi"}
+{"index":{"_index":"tt","_type":"ttt"}}
+{"name":"zhaosi"}
+{"update":{"_index":"lib2","_type":"books","_id":4}}
+{"doc":{"price":58}}
+```
+
+> **1、bulk相当于数据库里的bash操作。**
+>
+> **2、引入批量操作bulk，提高工作效率，你想啊，一批一批添加与一条一条添加，谁快?**
+>
+> **3、bulk API可以帮助我们同时执行多个请求**
+>
+> **4、bulk的格式：**
+>
+> action：index/create/update/delete
+>
+> metadata：_index,_type,_id
+>
+> request body：_source (删除操作不需要加request body)
+>
+> ​          { action: { metadata }}
+>
+> ​          { request body    }
+>
+> **5、bulk里为什么不支持get呢？**
+>
+> 　　答：批量操作，里面放get操作，没啥用！所以，官方也不支持。
+>
+> **6、create 和index的区别**
+>
+> 　　如果数据存在，使用create操作失败，会提示文档已经存在，使用index则可以成功执行。
+>
+>  **7、bulk一次最大处理多少数据量？**
+>
+> 　　bulk会把将要处理的数据载入内存中，所以数据量是有限制的，最佳的数据量不是一个确定的数值，它取决于你的硬件，你的文档大小以及复杂性，你的索引以及搜索的负载。
+>
+> 　　一般建议是1000-5000个文档，如果你的文档很大，可以适当减少队列，大小建议是5-15MB，默认不能超过100M，可以在es的配置文件（即$ES_HOME下的config下的elasticsearch.yml）中。
+
+### 版本控制
+
+> Elasticsearch采用了乐观锁来保证数据的一致性，即当用户对document（文档，即关系数据库中表里的一条数据）进行操作时，并不需要对该document做加锁、解锁的操作，只需要指定要操作的版本即可。当版本号一致时，Elasticsearch会允许该操作顺利进行，而当版本号存在冲突时，Elasticsearch会提示冲突并抛出异常（VersionConflictEngineException）。
+
+mapping的详细讲解
+1、Mapping的简单介绍
+mapping定义了type中的每个字段的数据类型以及这些字段如何分词等相关属性，mapping是elasticsearch中很重要的一个部分，之前文章中介绍的都是通过以下方式创建一个索引的
+
+PUT person/student/1
+{
+  "name":"lihua",
+  "age":18
+}
+然后我们用以下语句查看一下这个索引的mapping吧
+
+GET person/_mapping
+1
+
+elasticsearch自动就创建了一个默认的mapping，这个mapping里面各个字段是什么意思呢？下面就来一一讲解。
+
+{
+  "person" : {
+    "mappings" : {
+      "student" : {   //这个student自然是类型名
+        "properties" : {   //属性关键字，里面写定义字段的类型以及相关属性
+          "age" : {   //字段的名字
+            "type" : "long"    //类型名
+          },
+          "name" : {
+            "type" : "text",
+            "fields" : {   //fields属性
+              "keyword" : {
+                "type" : "keyword",
+                "ignore_above" : 256
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+mapping的大概结构就是这样的，一个字段也可以有多个属性。下面就分成字段数据类型和支持属性两部分来讲解mapping
+
+2、字段数据类型
+(1)核心数据类型（Core datatypes）
+字符型：string，string类型包括
+text 和 keyword
+
+text类型被用来索引长文本，在建立索引前会将这些文本进行分词，转化为词的组合，建立索引。允许es来检索这些词语。text类型不能用来排序和聚合。
+
+Keyword类型不需要进行分词，可以被用来检索过滤、排序和聚合。keyword 类型字段只能用本身来进行检索
+
+数字型：long, integer, short, byte, double, float
+日期型：date
+布尔型：boolean
+二进制型：binary
+
+(2)复杂数据类型（Complex datatypes）
+数组类型（Array datatype）：数组类型不需要专门指定数组元素的type，例如：
+字符型数组: [ “one”, “two” ]
+整型数组：[ 1, 2 ]
+数组型数组：[ 1, [ 2, 3 ]] 等价于[ 1, 2, 3 ]
+对象数组：[ { “name”: “Mary”, “age”: 12 }, { “name”: “John”, “age”: 10 }]
+对象类型（Object datatype）：_ object _ 用于单个JSON对象；
+嵌套类型（Nested datatype）：_ nested _ 用于JSON数组；
+
+(3)地理位置类型（Geo datatypes）
+地理坐标类型（Geo-point datatype）：_ geo_point _ 用于经纬度坐标；
+地理形状类型（Geo-Shape datatype）：_ geo_shape _ 用于类似于多边形的复杂形状；
+
+(4)特定类型（Specialised datatypes）
+IPv4 类型（IPv4 datatype）：_ ip _ 用于IPv4 地址；
+Completion 类型（Completion datatype）：_ completion 提供自动补全建议；
+Token count 类型（Token count datatype）： token_count _ 用于统计做了标记的字段的index数目，该值会一直增加，不会因为过滤条件而减少。
+mapper-murmur3
+类型：通过插件，可以通过 _ murmur3 _ 来计算 index 的 hash 值；
+附加类型（Attachment datatype）：采用 mapper-attachments
+插件，可支持_ attachments _ 索引，例如 Microsoft Office 格式，Open Document 格式，ePub, HTML 等。
+
+3、支持属性
+“store”:false//是否单独设置此字段的是否存储而从_source字段中分离，默认是false，只能搜索，不能获取值
+
+“index”: true//分词，不分词是：false ，设置成false，字段将不会被索引
+
+“analyzer”:“ik”//指定分词器,默认分词器为standard analyzer
+
+“boost”:1.23//字段级别的分数加权，默认值是1.0
+
+“doc_values”:false//对not_analyzed字段，默认都是开启，分词字段不能使用，对排序和聚合能提升较大性能，节约内存
+
+“fielddata”:{“format”:“disabled”}//针对分词字段，参与排序或聚合时能提高性能，不分词字段统一建议使用doc_value
+
+“fields”:{“raw”:{“type”:“string”,“index”:“not_analyzed”}} //可以对一个字段提供多种索引模式，同一个字段的值，一个分词，一个不分词
+
+“ignore_above”:100 //超过100个字符的文本，将会被忽略，不被索引
+
+“include_in_all”:ture//设置是否此字段包含在_all字段中，默认是true，除非index设置成no选项
+
+“index_options”:“docs”//4个可选参数docs（索引文档号） ,freqs（文档号+词频），positions（文档号+词频+位置，通常用来距离查询），offsets（文档号+词频+位置+偏移量，通常被使用在高亮字段）分词字段默认是position，其他的默认是docs
+
+“norms”:{“enable”:true,“loading”:“lazy”}//分词字段默认配置，不分词字段：默认{“enable”:false}，存储长度因子和索引时boost，建议对需要参与评分字段使用 ，会额外增加内存消耗量
+
+“null_value”:“NULL”//设置一些缺失字段的初始化值，只有string可以使用，分词字段的null值也会被分词
+
+“position_increament_gap”:0//影响距离查询或近似查询，可以设置在多值字段的数据上火分词字段上，查询时可指定slop间隔，默认值是100
+
+“search_analyzer”:“ik”//设置搜索时的分词器，默认跟ananlyzer是一致的，比如index时用standard+ngram，搜索时用standard用来完成自动提示功能
+
+“similarity”:“BM25”//默认是TF/IDF算法，指定一个字段评分策略，仅仅对字符串型和分词类型有效
+
+“term_vector”:“no”//默认不存储向量信息，支持参数yes（term存储），with_positions（term+位置）,with_offsets（term+偏移量），with_positions_offsets(term+位置+偏移量) 对快速高亮fast vector highlighter能提升性能，但开启又会加大索引体积，不适合大数据量用
+
+4、常用mapping举例
+关于项目中mapping的使用还是有不少坑的，因为mapping创建直接影响了查询，如果使用错误的mapping字段类型或者属性就会导致查询失败，所以mapping创建需要考虑各个方面。这里举一些比较实用的mapping创建实例。
+
+(1)
+PUT demo
+{
+  "mappings": {
+    "demo_type":{
+      "properties":{
+        "name":{
+          "type":"text"
+        }
+      }
+    }
+  }
+}
+如果mapping是这样的，那么这个name字段可以是单个字符，也可以是字符数组
+
+
+(2)
+//第一种mapping
+PUT demo
+{
+  "mappings": {
+    "demo_type":{
+      "properties":{
+        "name":{
+          "type":"text"
+        }
+      }
+    }
+  }
+}
+
+//第二种mapping
+PUT demo
+{
+  "mappings": {
+    "demo_type": {
+      "properties": {
+        "name": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": "256"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+这两个mapping的区别就是，如果name字段的值是li hua中间有空格，这时候使用第一种就查询不出来，使用第二种方法可以查询到。如果mapping是第一种，然后我这里有以下数据
+
+然后我通过以下查询，我想只查询name为Demo的数据，但是不管怎么查询都做不到唯一显示name为Demo，这时候就需要使用第二种mapping，第二种mapping多了keyword，就能帮助我们实现精确唯一查询。
+
+查询的时候也多加个keyword就可以查询到唯一的name为Demo了
+
+
+(3)这里还需要补充一个动态映射
+当ES在文档中碰到一个以前没见过的字段时，它会利用动态映射来决定该字段的类型，并自动地对该字段添加映射。
+可以通过dynamic设置来控制这一行为，它能够接受以下的选项：
+true：默认值。动态添加字段
+false：忽略新字段
+strict：如果碰到陌生字段，抛出异常
+
+PUT demo
+{
+  "mappings": {
+    "demo_type":{
+      "dynamic":"true",
+      "properties":{
+        "name":{
+          "type":"text"
+        }
+      }
+    }
+  }
+}
+这里mapping加了dynamic为true，则插入数据可以有name字段以外的字段出现，如下：
+
+这时候多一个age字段是没有问题，可以成功插入，dynamic设置为false这个age字段会被忽略，为strict则抛出异常。
+
+5、mapping的修改
+这是最后一个我感觉比较重要的一点。关于mapping能不能修改的问题，我的回答是可以修改。但是并不是直接在原来的mapping的基础上直接修改，因为elasticsearch不允许直接修改mapping，但是我们还有别的办法可以间接修改mapping。具体如下：
+
+POST _reindex
+{
+  "source": {
+    "index": "myindex"
+  },
+  "dest": {
+    "index": "demo"
+  }
+}
+elasticsearch提供了以上的这样一个方法，这个的意思就是把索引myindex里面的数据转移到demo索引中，然后我们删除掉之前的myindex，然后重新建立一个myindex索引，这时候索引中的mapping就是我们修改后的mapping，再通过同样的方法把demo的数据再转移到新的myindex当中就完成间接的mapping修改了。（以上语句也可以应用于数据迁移，非常方便）

@@ -1,0 +1,17 @@
+# [linux中ctrl+c、ctrl+z、ctrl+d区别](https://www.cnblogs.com/jintaoblogs/p/11343623.html)
+
+一、ctrl-c
+
+　　发送 SIGINT 信号（程序终止(interrupt)信号）给前台进程组中的所有进程。
+　　常用于终止正在运行的程序。
+
+二、ctrl-z
+
+　　发送 SIGTSTP 信号（停止进程的运行, 但该信号可以被处理和忽略）
+　　给前台进程组中的所有进程，常用于挂起一个进程。
+　　如果需要恢复到前台输入fg，恢复到后台输入bg
+
+三、ctrl+d
+
+　　不是发送信号，而是表示一个特殊的二进制值，表示 EOF。
+　　EOF是一个计算机术语，为End Of File的缩写,通常在文本的最后存在此字符表示资料结束。

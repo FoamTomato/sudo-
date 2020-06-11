@@ -1,0 +1,47 @@
+{
+    "referenceNo": "42",
+    "shipperHawbcode": "3906856",
+    "countryCode": "GB",
+    "shipZip": "SY2 5TR",
+    "orderWeight": 1,
+    "orderPieces": "1",
+    "totalprice": 3,
+    "mailCargoType": "2",
+    "length": 1,
+    "width": 1,
+    "height": 1,
+    "isReturn": "0",
+    "isBattery": "0",
+    "consignee": {
+        "consigneeStreet": "26 Vennington walk",
+        "consigneePostcode": "SY2 5TR",
+        "consigneeName": "Emily Cunningham",
+        "consigneeTelephone": "01743 343051",
+        "consigneeMobile": "01743 343051",
+        "consigneeEmail": "w0xjt0l92r3fktk@marketplace.amazon.co.uk",
+        "consigneeCountryEname": "1",
+        "consigneeCountryCname": "1"
+    },
+    "itemArr": [
+        {
+            "invoiceEnname": "1",
+            "invoiceCnname": "1",
+            "invoiceWeight": 1,
+            "invoiceQuantity": "1",
+            "unitCode": "pce",
+            "invoiceUnitcharge": 3,
+            "invoiceCurrencycode": "USD",
+            "hsCode": "1",
+            "sku": "B071TJ2S1Y",
+            "isContainsBattery": "1",
+            "isAneroidMarkup": "1",
+            "isOnlyBattery": "0",
+            "isBreakable": "0",
+            "isCharged": "0",
+            "salePrice": 3,
+            "saleCurrency": "usd",
+            "categoryName": "家具装饰",
+            "parentEnName": "Furniture decoration"
+        }
+    ]
+}

@@ -1,0 +1,494 @@
+### 1.什么是nginx
+
+nginx是一款轻量级的web服务器/反向代理服务器及电子邮件（IMAP/POP3）代理服务器，在BSD-like协议下发行。**其特点是占有内存少，并发能力强，事实上nginx的并发能力确实在同类型的网页服务器中表现较好**
+
+**nginx专为性能优化而开发,能经受高负载的考验**
+
+> 有报告表明能支持高达50000个并发连接数
+
+```java
+nginx做为HTTP服务器，有以下几项基本特性：
+
+处理静态文件，索引文件以及自动索引；打开文件描述符缓冲．
+无缓存的反向代理加速，简单的负载均衡和容错．
+FastCGI，简单的负载均衡和容错．
+模块化的结构。包括gzipping, byte ranges, chunked responses,以及 SSI-filter等filter。如果由FastCGI或其它代理服务器处理单页中存在的多个SSI，则这项处理可以并行运行，而不需要相互等待。
+支持SSL 和 TLSSNI．
+Nginx专为性能优化而开发，性能是其最重要的考量,实现上非常注重效率 。它支持内核Poll模型，能经受高负载的考验,有报告表明能支持高达 50,000个并发连接数。
+
+Nginx具有很高的稳定性。其它HTTP服务器，当遇到访问的峰值，或者有人恶意发起慢速连接时，也很可能会导致服务器物理内存耗尽频繁交换，失去响应，只能重启服务器。例如当前apache一旦上到200个以上进程，web响应速度就明显非常缓慢了。而Nginx采取了分阶段资源分配技术，使得它的CPU与内存占用率非常低。nginx官方表示保持10,000个没有活动的连接，它只占2.5M内存，所以类似DOS这样的攻击对nginx来说基本上是毫无用处的。就稳定性而言,nginx比lighthttpd更胜一筹。
+
+Nginx支持热部署。它的启动特别容易, 并且几乎可以做到7*24不间断运行，即使运行数个月也不需要重新启动。你还能够在不间断服务的情况下，对软件版本进行进行升级。
+
+Nginx采用master-slave模型,能够充分利用SMP的优势，且能够减少工作进程在磁盘I/O的阻塞延迟。当采用select()/poll()调用时，还可以限制每个进程的连接数。
+
+Nginx代码质量非常高，代码很规范，手法成熟， 模块扩展也很容易。特别值得一提的是强大的Upstream与Filter链。Upstream为诸如reverse proxy,与其他服务器通信模块的编写奠定了很好的基础。而Filter链最酷的部分就是各个filter不必等待前一个filter执行完毕。它可以把前一个filter的输出做为当前filter的输入，这有点像Unix的管线。这意味着，一个模块可以开始压缩从后端服务器发送过来的请求，且可以在模块接收完后端服务器的整个请求之前把压缩流转向客户端。
+
+Nginx采用了一些os提供的最新特性如对sendfile (Linux2.2+)，accept-filter (FreeBSD4.1+)，TCP_DEFER_ACCEPT (Linux 2.4+)的支持，从而大大提高了性能。
+```
+
+### 2.反向代理
+
+​	1.正向代理
+
+> nginx不仅可以做反向代理，实现负载均衡，还能用作正向代理来进行上网功能
+>
+> **正向代理**如果把局域网外的 internet 想象成一个巨大的资源库，则局域网中的客户端要访问 internet ，则需要通过代理服务器来访问，这种代理服务就称为正向代理
+>
+> ·在客户端（浏览器）配置代理服务器，通过代理服务器进行互联网访问
+
+​	2.反向代理
+
+> 反向代理服务器位于用户与目标服务器之间，但是对于用户而言，反向代理服务器就相当于目标服务器，即用户直接访问反向代理服务器就可以获得目标服务器的资源。
+>
+> 同时，用户不需要知道目标服务器的地址，也无须在用户端作任何设定。反向代理服务器通常可用来作为Web加速，即使用反向代理作为Web服务器的前置机来降低网络和服务器的负载，提高访问效率
+
+### 3.负载均衡
+
+​	1.什么是负载均衡
+
+> Load balancing，即负载均衡，是一种计算机技术，用来在多个计算机（计算机集群）、网络连接、CPU、磁盘驱动器或其他资源中分配负载，以达到最优化资源使用、最大化吞吐率、最小化响应时间、同时避免过载的目的。
+
+​	2.为啥需要负载均衡
+
+> 我们在日常生活中经常免不了要去一些比较拥挤的地方，比如地铁站、火车站、电影院、银行等。无论是买票，还是排队入场，这些场所一般都会设置多个服务点或者入口的。
+>
+> 如果没有人引导的话，大多数情况下，最近的入口会挤满人。而哪些距离较远的服务点或者入口就宽松很多。
+>
+> ![](https://img2018.cnblogs.com/blog/573911/201905/573911-20190528134421557-1708431773.png)
+>
+> 这种情况下，就会大大浪费资源，因为如果可以把这些排队的人很好的分散到各个入口的话会大大缩短排队时间。
+>
+> 其实，网站的建设也是一样的。为了提升网站的服务能力，很多网站采用集群部署，就像话剧院有多个入口一样。
+>
+> 这时候，就需要一个协调者，来均衡的分配这些用户的请求，可以让用户的可以均匀的分派到不同的服务器上。
+>
+> ![img](C:\Users\spor-wen10\Documents\573911-20190528134959589-667713517.png)
+>
+> **负载均衡（Load Balance），意思是将负载（工作任务，访问请求）进行平衡、分摊到多个操作单元（服务器，组件）上进行执行。是解决高性能，单点故障（高可用），扩展性（水平伸缩）的终极解决方案。**
+>
+> ![img](https://img2018.cnblogs.com/blog/573911/201905/573911-20190528112846156-21585619.png)
+
+### 4.动静分离
+
+为了加快网站的解析速度，可以把动态页面和静态页面由不同的服务器来解析，加快解析速度。降低原来单个服务器的压力
+
+![img](https://img2018.cnblogs.com/blog/1710915/201909/1710915-20190906165935954-1700365552.jpg)
+
+**动静分离和前后分离的区别**
+
+1. 动静分离动态资源与静态资源分离，不会部署在同一台服务器上。
+2. 前后分离:网站架构模式，微服务开发基于`SOA`面向于服务器开发，后台和前端都采用调用接口方式。将一个项目拆分成一个控制`Web`(前端)和接口(后端),最终使用rpc远程调用技术。视图层和业务逻辑层拆分，中间采用`RPC`远程调用技术
+
+**nginx相关的素材**
+
+> pcre-8.37.tar.gz
+>
+> openssl-1.0.1t.tar.gz
+>
+> zlib-1.2.8.tar.gz
+>
+> nginx-1.11.1.tar.gz
+
+1.安装pcre依赖
+
+> 把安装压缩文件防到linux系统中
+>
+> 解压压缩文件
+>
+> 进入解压目录，执行./configure
+>
+> 使用 make && make install
+>
+> 安装之后，使用命令，查看版本号  pcre-config  --version
+
+2.安装其他的依赖
+
+> yum -y install make zlib zlib-devel gcc-c++ libtool openssl-devel
+
+3.安装nginx
+
+> 1.把nginx安装文件放到linux系统中
+>
+> 2.解压压缩文件
+>
+> 3.进入解压之后目录，执行./configure
+>
+> 4.使用make && make install
+>
+> 安装成功之后，在usr多出来一个文件夹 local/nginx,在nginx有sbin有启动脚本
+>
+> ps -ef | grep nginx//查看进程 
+
+4.开放端口
+
+> 查看开发的端口
+>
+> firewall -cmd --list -all
+>
+> 设置开放的端口号
+>
+> firewall -cmd --add -service = http --permanent
+>
+> sudo firewall -cmd --add -port = 80/tcp --permanent
+>
+> 重启防火墙
+>
+> firewall -cmd --reload
+
+### nginx操作的常用命令
+
+> 1.使用nginx操作命令前提条件：必须进入nginx的目录
+>
+> /user/local/nginx/sbin
+>
+> 2.查看nginx的版本号
+>
+> ./nginx -v
+>
+> 3.启动nginx
+>
+> ./nginx
+>
+> 4.关闭nginx
+>
+> ./nginx -s stop
+>
+> 5.重新加载nginx
+>
+> ./nginx -s reload
+
+### nginx配置文件
+
+> 1.nginx配置文件位置
+>
+> /user/local/nginx/conf/nginx.conf
+>
+> 2.nginx配置文件组成
+>
+> - 全局块
+>
+>   ```python
+>   从配置文件开始到events块之间的内容，主要会设置一些影响nginx服务器整体运行的配置指令
+>   比如 worker_processes 1.worker_processes 值越大，可以支持的并发处理量也越多
+>   work_process支持最大连接数为1024
+>   ```
+>
+> - HTTP块
+>
+>   ```python
+>   Nginx 服务器配置中最频繁的部分
+>   http 块也可以包括http全局块，server块
+>   	http全局块配置的指令包括文件引入，MIME-TYPE 定义，日志定义，连接超时时间，单链接请求数上限
+>   ```
+>
+> - events块
+>
+>   ```python
+>   events 块涉及的指令主要影响 Nginx 服务器与用户的网络连接
+>   比如 worker_connections 1024; 支持的最大连接数
+>   
+>   这块和虚拟主机有密切关系，虚拟主机从用户角度看，和一台独立的硬件主机是完全一样的，该技术的产生是为了节省互联网服务器硬件成本
+>   ```
+>
+>   
+
+### nginx配置实例-反向代理
+
+1.实现效果
+
+> 1. 打开浏览器，在浏览器地址栏输入地址 www.123.com 跳转linux系统 tomcat 主页面中
+> 2. 准备工作
+>    - ​	在linux系统安装tomcat，使用默认端口8080
+>      - tomcat安装文件放到linux系统中，解压
+>      - 进入tomcat的bin目录中 ./startup.sh 启动服务器
+>    - 对外开发访问端口
+>    - 在windows的浏览器中访问tomcat看看是否成
+> 3. 访问过程的分析
+>    1. windows的host文件进行配置，配置域名映射的ip地址
+> 4. 具体配置
+>    1. 在windows系统的host文件进行域名和ip对应关系的配置
+>       1. 添加内容在host中
+>       2. 在nginx中进行代理转发
+
+2.实现效果2
+
+> 1. 准备两个tomcat服务器，一个8080 一个8081
+>
+> 2. 创建文件夹和测试界面
+>
+> 3. 具体配置
+>
+>    1. 找到nginx配置文件
+>
+>       server{
+>
+>       ​	listen  9001;
+>
+>       ​	server_name  localhost;
+>
+>       ​	location ~/edu/{
+>
+>       ​		proxy_pass location:8080;
+>
+>       ​	}
+>
+>       ​	location ~/vod/{
+>
+>       ​		proxy_pass location:8081;
+>
+>       ​	}
+>
+>       }
+
+```
+1.=:用于不含正则表达式的uri前，要求请求字符串与uri严格匹配，如果匹配成功，就停止继续向下搜索并立即处理该请求
+2.~:用于标识uri 包含正则表达式，并且区分大小写
+3.~*:用于标识uri 包含正则表达式，并且不区分大小写
+4.^~:用于不含正则表达式的uri 前，要求nginx服务器找到标识uri和请求字符串匹配度最高的location后，立即使用此location处理请求，而不再使用location块中的正则uri和请求字符串做匹配
+注意：如果uri包含正则表达式，则必须要有~或者~*标识
+```
+
+### nginx配置实例-负载均衡
+
+1.实现效果
+
+> 浏览器地址栏输入地址  www.baidu.com 负载均衡效果，平均8080和8081中
+>
+> 准备工作
+>
+> ​	准备两台tomcat服务器 一台8080  一台8081
+>
+> ​	在两台tomcat的webapps中配置相同的页面，但是内容不想同
+>
+> 在nginx的配置文件中进行负载均衡的配置
+
+在http{}中加入
+
+```nginx
+upstream myserver{
+	server 192.168.1.181:8080;
+	server 192.168.1.181:8081;
+}
+```
+
+然后在server{}中更改
+
+```nginx
+location /{
+	proxy_pass  http://myserver;
+	root html;
+	index index.html index.html;
+}
+```
+
+策略
+
+1. 轮询（默认）
+
+   1. 每个请求按时间顺序遂一分配到不同的后端服务器，如果后端服务器down掉，能自动剔除
+
+2. weight
+
+   1. weight代表权，重默认为1，权重越高被分配的客户端越多
+
+   2. 指定轮询几率，weight和访问比率成正比，用于后端服务器性能不均的情况
+
+      ```nginx
+      upstream myserver{
+      	server 192.168.1.181:8080 weight=10;
+      	server 192.168.1.181:8081 weight=10;
+      }
+      ```
+
+   3.ip_hash
+
+   1. 每个请求按访问的ip的hash结果分配，这样每个固定访问一个后端服务器，可以解决session的问题
+
+      ```nginx
+      upstream server_pool{
+      	ip_hash
+      	server 192.168.1.181:80
+      	server 192.168.1.182:80
+      }
+      ```
+
+   4.fair(第三方)
+
+   按后端服务器的响应时间来分配请求，相应时间端的优先分配
+
+   ```nginx
+   upstream server_pool{
+   	server 192.168.1.181:90
+   	server 192.168.1.191:90
+   	fair
+   }
+   ```
+
+   
+
+### nginx配置实例-动静分离
+
+1.什么是动静分离
+
+动静分离是指，静态页面与动态页面分开不同系统访问的架构设计方法。
+
+- 静态页面访问路径短，访问速度快，几毫秒
+- 动态页面访问路径长，访问速度相对较慢(数据库的访问，网络传输，业务逻辑计算)，几十毫秒甚至几百毫秒，对架构扩展性的要求更高
+- 静态页面与动态页面以不同域名区分
+
+2.准备工作
+
+> 在linux系统中准备一些静态资源
+>
+> localtion	 /www/{
+>
+> ​	root 	/data/;
+>
+> ​	index	index.html	index.htm;
+>
+> }
+>
+> location	/image/{
+>
+> ​	root	/data/;
+>
+> ​	autoindex	on;
+>
+> }
+>
+> 在浏览器中输入地址
+>
+> http://192.168.1.181:80/image/01.jpg
+>
+> 因为配置文件	autoindex on可以把image文件夹下全列出来
+>
+> http://192.168.1.181:80/www/a.html
+
+
+
+### nginx配置高可用的集群
+
+遇到nginx宕机怎么办？请求无法实现效果
+
+1.什么是nginx的高可用
+
+**传统的高可用思路**
+
+tomcat的高可用的思路，是在tomcat集群前面加一层负载服务nginx。如下图
+
+![img](https://pic2.zhimg.com/80/v2-51ca5a559110363f66e4e5b7be963989_720w.jpg)
+
+这种做法，解决了tomcat的高可用问题。但是引入了前面的负载机器的高可用问题（Nginx如果挂了，玩完）
+
+如果nginx沿用此思路，总会有一个最前端是单机的，存在宕机玩完的风险（鸡生蛋蛋生鸡无穷尽）
+
+ **lvs 思想解决高可用问题**
+
+![img](https://pic1.zhimg.com/80/v2-32ddd04accba677b97bc33e837aa5414_720w.jpg)
+
+如上图，由服务器集群虚拟出来一台 虚拟网关vip（不真实存在，自然不存在宕机问题），
+
+此vip由两台机器共同协商生成。当有一台机器宕机时，另一台机器一样能维持vip。这保证了，只要两台机器不同时宕机，vip就存在
+
+**准备工作**
+
+1.需要两台nginx服务器
+
+2.需要keepalived
+
+3.需要虚拟ip
+
+使用yum命令进行安装
+
+yum install keepalived -y  //下载keepalived
+
+rpm -q -a keepaliced  //查看是否安装
+
+安装之后，在etc里面生成目录keepalived，有文件keepalived.conf
+
+4.修改/etc/keepalived/keepalived.conf文件
+
+### **keepalived安装**
+
+下载源码包--不能使用yum方式安装（有bug） --wget [https://www.keepalived.org/software/keepalived-1.3.4.tar.gz](https://link.zhihu.com/?target=https%3A//www.keepalived.org/software/keepalived-1.3.4.tar.gz)
+
+配置(指定安装目录和配置目录，否则文件太散乱) --./configure --prefix=/usr/local/keepalived --sysconf=/etc
+
+make && make install
+
+### **keepalived主机配置**
+
+打开/etc/keepalived/keepalived.conf，只需要配置如下一段。（其它是多余配置，删除）
+
+![img](https://pic3.zhimg.com/80/v2-4125efac6e1895dc2a290f6c9465dc0e_720w.jpg)
+
+
+
+启动keepalived，查看机器ip地址，可发现多出一个244.200的ip
+
+![img](https://pic3.zhimg.com/80/v2-8dc528d7a52f7ec3084143b9b6341d5e_720w.jpg)
+
+此时，使用原ip地址244.253能打开的页面，使用244.200也能打开
+
+![img](https://pic2.zhimg.com/80/v2-d894395f9a0f945b9596e62395aef015_720w.jpg)
+
+**keepalived从机配置**
+
+从机配置与主机过程完全一样，配置文件内以下标识id与优先级稍作变化即可
+
+![img](https://pic4.zhimg.com/80/v2-7d63c523c851085635bbd71e567a320b_720w.jpg)
+
+
+
+启动从机的keepalived后，可发现其ip地址无变化
+
+**keepalived校验LVS效果**
+
+1、此时，杀掉主机上的keepalived，244.200的ip将从主机上消失。而出现的从机的ip中
+
+2、再次启动主机的keepalived，244.200的ip将被主机重新夺回
+
+3、此效果是单主单备方式。备机资源有一定的浪费。可以重复前面的动作，虚拟出第二个ip，将主从机优先级颠倒，从而利用起备机服务
+
+**keepalived监控服务软件**
+
+以上操作中，keepalived很好的实现了LVS功能，即集群机器共同虚拟一个vip，并实现在集群中自动漂移。
+
+但假如物理机状况良好，并不能保障其上运行的服务软件ok，因此需要借助keepalived来监控服务软件。
+
+a、使用keepalived来监控nginx
+
+编辑一个sh监控脚本，sh脚本：
+
+```text
+#!/bin/bash
+A=`ps -C nginx --no-header |wc -l`       #统计nginx进程是否存在
+if [ $A -eq 0 ];then                            #为0，表明nginx停止了
+      /usr/local/nginx/sbin/nginx                #尝试重启nginx
+      if [ `ps -C nginx --no-header |wc -l` -eq 0 ];then    #nginx重启失败，则keepalived自杀，进行VIP转移
+              killall keepalived    #杀掉，vip就漫游到另一台机器                
+      fi
+fi
+```
+
+b、在配置文件中加入以下两处配置：
+
+![img](https://pic4.zhimg.com/80/v2-a2765ccbf4f43a12c2754fc4cf897153_720w.jpg)
+
+
+
+c、重启keepalived，测试监控效果，如下图操作：
+
+![img](https://pic2.zhimg.com/80/v2-bd210a2207ad47d3697ed8f44b584b6d_720w.jpg)
+
+> 把两台服务器上的nginx和keepalived启动
+>
+> 启动 nginx: ./nginx
+>
+> 启动 keepalived: systemctl start keepalived.service
+
+陶辉
+
+
+

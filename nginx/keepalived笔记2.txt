@@ -1,0 +1,309 @@
+**keepalived**
+
+高可用：两台业务系统启动着相同的服务，如果有一台故障，另一台自动接管,我们将将这个称之为高可用；
+
+Keepalived工作原理：通过vrrp协议实现
+
+
+
+![img](https:////upload-images.jianshu.io/upload_images/16973075-b29105b83d74503a.png?imageMogr2/auto-orient/strip|imageView2/2/w/1055/format/webp)
+
+vrrp原理
+
+![img](https:////upload-images.jianshu.io/upload_images/16973075-9e20da351456714a.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+
+vrrp抓包
+
+Keepalived工作方式：抢占式、非抢占式
+
+安装：yum install keepalived  -y
+
+日志存放位置：/var/log/messages
+
+# 1、keepaliaved 抢占式配置
+
+#### master配置
+
+
+
+```go
+[root@lb01 ~]# rpm -qc keepalived
+/etc/keepalived/keepalived.conf
+/etc/sysconfig/keepalived
+[root@lb01 ~]# cat /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+    router_id lb02 #标识信息，一个名字而已；
+}
+vrrp_instance VI_1 {
+    state MASTER    #角色是master
+    interface eth0  #vip 绑定端口
+    virtual_router_id 50    #让master 和backup在同一个虚拟路由里，id 号必须相同；
+    priority 150            #优先级,谁的优先级高谁就是master ;
+    advert_int 1            #心跳间隔时间
+    authentication {
+        auth_type PASS      #认证
+        auth_pass 1111      #密码 
+}
+    virtual_ipaddress {
+        10.0.0.3            #虚拟ip
+    }
+}
+```
+
+#### backup配置
+
+
+
+```go
+[root@lb02 ~]# cat /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {     
+    router_id lb02   
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface eth0
+    virtual_router_id 50
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+}
+    virtual_ipaddress {
+        10.0.0.3
+    }
+}
+
+[root@lb02 ~]# 
+```
+
+# 2、Keepalived非抢占式配置：
+
+#### 非抢占式不再有主从之分，全部都为BACKUP,并且配置文件中添加nopreempt，用来标识为非抢占式；
+
+
+
+```go
+[root@lb01 /etc/nginx/upstream]# cat /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+    router_id lb01
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 50
+    priority 150
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+}
+    virtual_ipaddress {
+        10.0.0.3
+    }
+}
+```
+
+
+
+```go
+[root@lb02 /etc/nginx/upstream]# cat /etc/keepalived/keepalived.conf 
+! Configuration File for keepalived
+global_defs {     
+    router_id lb02   
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface eth0
+    virtual_router_id 50
+    priority 100
+    nopreempt
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+}
+    virtual_ipaddress {
+        10.0.0.3
+    }
+}
+
+You have new mail in /var/spool/mail/root
+[root@lb02 /etc/nginx/upstream]# 
+```
+
+# 3、nginx+keepalived
+
+##### 实现思路：将keepalived 中的vip作为nginx负载均衡的监听地址，并且域名绑定的也是vip的地址。
+
+##### 说明：Nginx 负载均衡实现高可用，需要借助Keepalived地址漂移功能。
+
+```
+在不考虑后端数据库和存储的时候如下架构
+```
+
+![img](https:////upload-images.jianshu.io/upload_images/16973075-73fd8c122f80cab6.png?imageMogr2/auto-orient/strip|imageView2/2/w/536/format/webp)
+
+keepalived+Nginx
+
+
+ 两台负载均衡配置：
+
+
+
+
+
+```nginx
+[root@lb01 /etc/nginx/upstream]# ip add show eth0
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 00:0c:29:97:e1:ff brd ff:ff:ff:ff:ff:ff
+    inet 10.0.0.5/24 brd 10.0.0.255 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet 10.0.0.3/32 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::20c:29ff:fe97:e1ff/64 scope link 
+       valid_lft forever preferred_lft forever
+[root@lb01 /etc/nginx/upstream]# cat /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+    router_id lb01
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 50
+    priority 150
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+}
+    virtual_ipaddress {
+        10.0.0.3
+    }
+}
+
+
+[root@lb01 /etc/nginx/upstream]# 
+```
+
+
+
+```dockerfile
+[root@lb02 /etc/nginx/upstream]# ip add show eth0
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 00:0c:29:6f:18:48 brd ff:ff:ff:ff:ff:ff
+    inet 10.0.0.6/24 brd 10.0.0.255 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::20c:29ff:fe6f:1848/64 scope link 
+       valid_lft forever preferred_lft forever
+[root@lb02 /etc/nginx/upstream]# cat /etc/keepalived/keepalived.conf 
+! Configuration File for keepalived
+global_defs {     
+    router_id lb02   
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface eth0
+    virtual_router_id 50
+    priority 100
+    nopreempt
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+}
+    virtual_ipaddress {
+        10.0.0.3
+    }
+}
+
+[root@lb02 /etc/nginx/upstream]# 
+```
+
+# 4、keepalived脑裂现象
+
+由于某些原因，导致两台keepalived高可用服务器在指定时间内，无法检测到对方存活心跳信息，从而导致互相抢占对方的资源和服务所有权，然而此时两台高可用服务器有都还存活。
+ 可能出现的原因：
+ 1、服务器网线松动等网络故障；
+ 2、服务器硬件故障发生损坏现象而崩溃；
+ 3、主备都开启了firewalld 防火墙。
+ 4、在Keepalived+nginx 架构中，当Nginx宕机，会导致用户请求失败，但是keepalived不会进行切换，
+ 所以需要编写一个检测nginx的存活状态的脚本，如果nginx不存活，则kill掉宕掉的nginx主机上面的keepalived。(所有的keepalived都要配置)
+
+架构如下：
+
+
+
+![img](https:////upload-images.jianshu.io/upload_images/16973075-17cb0d1039a45bbe.png?imageMogr2/auto-orient/strip|imageView2/2/w/563/format/webp)
+
+image.png
+
+### 脚本如下：
+
+
+
+```cmake
+[root@lb01 /server/scripts]# cat /server/scripts/check_list 
+#!/bin/sh
+
+nginxpid=$(ps -C nginx --no-header|wc -l)
+#1.判断Nginx是否存活,如果不存活则尝试启动Nginx
+if [ $nginxpid -eq 0 ];then
+    systemctl start nginx
+    sleep 3
+    #2.等待3秒后再次获取一次Nginx状态
+    nginxpid=$(ps -C nginx --no-header|wc -l) 
+    #3.再次进行判断, 如Nginx还不存活则停止Keepalived,让地址进行漂移,并退出脚本  
+    if [ $nginxpid -eq 0 ];then
+        systemctl stop keepalived
+   fi
+fi
+[root@lb01 /server/scripts]# 
+```
+
+### 配置文件如下：
+
+
+
+```cmake
+[root@lb01 /server/scripts]# cat /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+    router_id lb01
+}
+
+vrrp_script check {
+    script "/server/scripts/check_list"
+    interval  10
+
+
+}
+
+vrrp_instance VI_1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 50
+    priority 150
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+}
+    virtual_ipaddress {
+        10.0.0.3
+    }
+    track_script  {
+    check
+}
+}
+[root@lb01 /server/scripts]# 
+```

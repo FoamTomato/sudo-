@@ -1,0 +1,163 @@
+```
+在Ubuntu上部署Express项目
+原创Code Life 最后发布于2020-03-06 22:40:54 阅读数 83  收藏
+展开
+1.搭建NodeJS环境
+安装NodeJS
+安装npm
+2. 安装数据库及缓存
+安装MySQl
+点击去查看如何安装MySQL
+https://blog.csdn.net/wumingid/article/details/89460264
+
+初始化数据库
+# 在服务器
+# 进入 数据库备份文件[shop.sql] 所在文件夹
+# 登录数据库
+mysql -uroot -p[数据库密码]
+# 创建数据库
+create database mydb charset=utf8;
+# 退出
+exit
+# 导入数据库
+mysql -u root -p mydb < mydb.sql
+# 登录数据库确认表解构及数据
+mysql -uroot -p
+show databases;
+use mydb
+show tables;
+select * from sh_user;
+# 确认无误后 退出
+exit
+
+安装Redis
+2.1.可选[安装GIT、FTP服务]
+3.上传项目代码
+SSH登录服务器 在根目录创建 NodeProject 用于存放项目代码
+
+# 在服务器
+cd ~
+mkdir NodeProject 
+cd NodeProject
+
+在本地计算机 我这里使用scp上传项目文件 [当然，正常项目开发需使用GIT拉取项目代码]
+
+# 在本地
+ scp .\shop_api_server.rar user01@192.168.72.132:/home/user01/NodeProject
+
+例如：
+
+在服务器查看文件并解压缩
+
+# 在服务器
+# 查看文件是否上传
+ll -h
+# 安装rar解压工具
+sudo apt install rar
+# 解压文件
+rar x shop_api_server.rar
+# 进入项目文件夹
+cd shop_api_server/
+# 安装项目所需依赖
+npm i
+# 安装PM2
+npm i pm2 -g
+# 查看PM2版本
+pm2 --version
+# 启动服务 命名为shop 开启2个进程用于负载均衡
+pm2 start app.js -n shop -i 2
+# 查看所有服务
+pm2 list
+
+PM2其他常用命令
+
+# 停止服务
+pm2 stop [app_name|app_id]
+# 停止所有服务
+pm2 stop all
+# 重启服务
+pm2 restart app.js
+# 删除进程
+pm2 delete [app_name|app_id]
+# 删除所有进程
+pm2 delete all
+# 查看单个进程信息
+pm2 describe 0
+# 查看日志
+pm2 logs
+# 查看进程消耗资源情况
+pm2 monit
+
+至此，Express项目部署完成，接下来使用Nginx部署前端Vue项目
+1.打包Vue项目
+npm run build
+1
+将打包好的文件上传至服务器 /VueProject
+
+# 服务器
+cd ~
+mkdir VueProject
+cd VueProject
+
+2.安装配置Nginx
+# 服务器
+# 安装nginx
+sudo apt-get install nginx
+# 启动
+sudo /etc/init.d/nginx start
+# 查看nginx进程
+ps aux | grep nginx
+
+# 关闭命令
+sudo /etc/init.d/nginx stop
+
+此时已经可以访问Nginx默认页面
+
+接着配置Nginx设置
+
+cd /etc/nginx
+# 检查Nginx设置 及 日志路径
+cat nginx.conf
+
+# 查看日志
+cd /var/log/nginx
+ls
+# 查看访问日志
+cat access.log
+
+配置Vue项目
+
+# 进入配置文件目录
+cd /etc/nginx/sites-available
+# 备份配置文件
+sudo cp default default1
+# 修改配置文件
+sudo vim default
+
+修改为如下内容
+
+server {
+	listen 80;
+	listen [::]:80;
+
+	server_name localhost;
+
+	# SSL configuration
+	#
+	# listen 443 ssl default_server;
+	# listen [::]:443 ssl default_server;
+
+	root /home/user01/VueProject/dist;
+	index index.html;
+
+	location / {
+		try_files $uri $uri/ =404;
+	}
+
+}
+
+
+重启Nginx
+访问测试
+```
+

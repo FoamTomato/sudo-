@@ -1,0 +1,62 @@
+
+
+1 问题背景
+2 问题原因
+3 环境变量配置(Linux)
+3.1 临时环境变量
+3.2 对当前用户有效
+3.3 所有账户均有效
+1 问题背景
+最近准备把supervisord替换为pm2，毕竟都是用的node，还是用node的管理工具比较好。
+
+所以按照npm 上pm2的说明尝试一波
+npm install pm2 -g
+pm2 start app.js
+直接发现找不到命令
+
+No command 'pm2' found, did you mean:
+ Command 'pmc' from package 'linuxptp' (universe)
+ Command 'pmi' from package 'powermanagement-interface' (universe)
+ Command 'pmk' from package 'pmk' (universe)
+ Command 'pms' from package 'pms' (universe)
+ Command 'wm2' from package 'wm2' (universe)
+ Command 'pom2' from package 'libpod-pom-perl' (universe)
+ Command 'pm' from package 'powerman' (universe)
+ Command 'pmw' from package 'pmw' (universe)
+2 问题原因
+这个问题就是Linux环境配置的原因。
+因为最近换了新的开发机，里面node都是现装的，而且还是安装在自定义目录，所以这里就需要自己配置linux的环境变量去处理这种情况。
+
+npm prefix -g 该命令可以看到node全局环境的目录在哪里
+在npm prefix -g 输出目录下的bin文件夹下可以找到相应可执行文件（pm2）。
+
+如果node安装后，在 shell 中无法执行node命令，也是环境变量造成的。均需要配置环境变量。
+
+3 环境变量配置(Linux)
+Linux环境变量配置有三种：
+
+当前用户当前shell有效。（临时环境变量,关闭即失效）
+当前用户有效
+所有用户均有效
+3.1 临时环境变量
+在shell中运行下列命令，$PATH:后跟想要加入环境变量的目录
+
+export PATH=$PATH:/home/xx.xx/node-v8.11.3-linux-x64/bin
+
+3.2 对当前用户有效
+修改用户目录下的.bashrc文件
+vi ~/.bashrc
+在文件最后添加该语句
+
+PATH=$PATH:/home/xx.xx/node-v8.11.3-linux-x64/bin
+
+重新登录即生效
+
+3.3 所有账户均有效
+修改/etc/profile文件
+sudo vi /etc/profile
+在末尾添加以下内容
+
+export PATH="$PATH:/home/xx.xx/node-v8.11.3-linux-x64/bin"
+
+退出当前shell再重新登录即可生效或执行source /etc/profile该命令

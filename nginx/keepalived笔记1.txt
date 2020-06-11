@@ -1,0 +1,378 @@
+# 概念
+
+#### keepalived是什么
+
+keepalived是集群管理中保证集群高可用的一个服务软件，用来防止单点故障。
+
+#### keepalived工作原理
+
+keepalived是以VRRP协议为实现基础的，VRRP全称Virtual Router Redundancy Protocol，即虚拟路由冗余协议。
+ 将N台提供相同功能的服务器组成一个服务器组，这个组里面有一个master和多个backup，master上面有一个对外提供服务的vip（该服务器所在局域网内其他机器的默认路由为该vip），master会发组播，当backup收不到vrrp包时就认为master宕掉了，这时就需要根据VRRP的优先级来选举一个backup当master
+
+#### VRRP协议
+
+虚拟路由冗余协议，可以认为是实现路由器高可用的协议，即将N台提供相同功能的路由器组成一个路由器组，这个组里面有一个master和多个backup，master上面有一个对外提供服务的vip（该路由器所在局域网内其他机器的默认路由/网关为该vip），master会发组播，当backup收不到vrrp包时就认为master宕掉了，这时就需要根据VRRP的优先级来选举一个backup当master。这样的话就可以保证路由器的高可用了。
+
+#### keepalived主要有三个模块
+
+分别是core、check和vrrp。
+ core模块为keepalived的核心，负责主进程的启动、维护以及全局配置文件的加载和解析。
+ check负责健康检查，包括常见的各种检查方式。
+ vrrp模块是来实现VRRP协议的。
+
+## 实例一：两台keeplived
+
+##### 环境：
+
+server1   192.168.122.34
+ server1   192.168.122.239
+ vip           192.168.122.10
+
+server1、 2 操作相同
+
+
+
+```php
+此配置文件需要注意以下几点：
+state    1为主   MASTER
+            2为副   BACKUP
+网卡名称    ens33/eth0
+mcast_src_ip   为本机IP
+
+脚本在/etc/keepalived   这样不用修改路径
+
+本实验用的是httpd服务,在默认页面输入内容
+server1       echo 1 > /var/www/html/index.html
+server2       echo 2 > /var/www/html/index.html
+```
+
+- yum -y install keepalived
+- vim /etc/keepalived/keepalived.conf
+
+
+
+```objectivec
+! Configuration File for keepalived
+global_defs {
+ }
+
+#vrrp_script chk_httpd {                        #健康检查
+# script "/etc/keepalived/ck_httpd.sh"     #检查脚本
+#interval 2                            #检查频率.秒
+# weight -5                             #priority减5
+#fall 3                                        #失败三次
+# }
+
+vrrp_instance VI_1 {               #VI_1。实例名两台路由器相同。同学们
+要注意区分。
+    state MASTER                        #主或者从状态
+    interface eth0                     #监控网卡
+    mcast_src_ip 192.168.122.34          #心跳源IP
+    virtual_router_id 55                #虚拟路由编号，主备要一致。同>学们注意区分
+    priority 100                        #优先级
+    advert_int 1                        #心跳间隔
+
+    authentication {                    #秘钥认证(1-8位)
+        auth_type PASS
+        auth_pass 123456
+    }
+    #创建一个虚拟IP
+    virtual_ipaddress {                 #VIP
+    192.168.122.10/24
+        }
+
+#  track_script {                       #引用脚本
+#      chk_httpd
+#  }
+
+}
+```
+
+
+
+```cpp
+client
+测试：访问VIP  http://192.168.122.10
+拔掉master的网线。/  关机
+访问VIP  http://192.168.122.10，观察网页已经切换
+
+curl  192.168.122.10
+1
+```
+
+## 脚本注意与配置文件中名称相同：
+
+vim /etc/keepalived/ck_httpd.sh
+
+
+
+```bash
+#!/bin/bash
+#+检查nginx进程是否存在
+counter=$(ps -C httpd --no-heading|wc -l)        #此行有服务名
+if [ "${counter}" = "0" ]; then
+#尝试启动一次nginx，停止5秒后再次检测
+    service httpd start                                          #启动服务
+    sleep 5
+    counter=$(ps -C httpd --no-heading|wc -l)     #此行有服务名
+    if [ "${counter}" = "0" ]; then
+#如果启动没成功，就杀掉keepalive触发主备切换
+        service keepalived stop
+    fi
+fi
+```
+
+
+
+```css
+chmod +x ck_httpd.sh         给权限              
+systemctl restart keepalived.service      重启服务         
+```
+
+# 实例二：keepalived + lvs集群
+
+![img](https:////upload-images.jianshu.io/upload_images/14611979-3f113f8b43a01d70.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+
+image.png
+
+本实验需要注意点：
+ 开启keepalived就把ipvsadm启动了。不需要单独启动
+ 本实验直接做的是双主模式，这样不会造成资源浪费
+ 主服务器上才会显示虚拟网络lo:0 / lo:1
+
+##### 环境：
+
+192.168.122.164         lvs1
+ 192.168.122.64           lvs2
+ 192.168.122.194         web1
+ 192.168.122.198         web2
+ 192.168.122.113         client
+
+## 在lvs上做的：
+
+yum -y install keepalived ipvsadm
+ systemctl start keeplived
+
+vim /etc/keepalived/keepalived.conf
+
+#### lvs1
+
+
+
+```bash
+! Configuration File for keepalived
+global_defs {
+        router_id Director1    #两边不一样
+        }
+
+vrrp_instance VI_1 {
+        state MASTER                            #另外一台机器是BACKUP
+        interface eth0                          #心跳网卡
+        virtual_router_id 51                    #虚拟路由编号，主备要一致
+        priority 100                            #优先级
+        advert_int 1                            #检查间隔，单位秒
+        authentication {
+                auth_type PASS
+                auth_pass 1111
+                }
+        virtual_ipaddress {
+                192.168.122.20/24 dev eth0      #VIP和工作端口
+                }
+        }
+
+virtual_server 192.168.122.20 80 {              #LVS 配置，VIP
+        delay_loop 3                            #服务论询的时间间隔
+        lb_algo rr                              #LVS 调度算法
+        lb_kind DR                              #LVS 集群模式
+        protocol TCP
+        real_server 192.168.122.194 80 {
+                weight 1
+                TCP_CHECK {
+                        connect_timeout 3
+                        }
+                }
+        real_server 192.168.122.198 80 {
+                weight 1
+                TCP_CHECK {
+                        connect_timeout 3
+                        }
+                }
+}
+
+
+vrrp_instance VI_2 {
+        state BACKUP                            #另外一台机器是BACKUP
+        interface eth0                          #心跳网卡
+        virtual_router_id 55                    #虚拟路由编号，主备要一致
+        priority 90                            #优先级
+        advert_int 1                            #检查间隔，单位秒
+        authentication {
+                auth_type PASS
+                auth_pass 1111
+                }
+        virtual_ipaddress {
+                192.168.122.30/24 dev eth0      #VIP和工作端口
+                }
+        }
+
+virtual_server 192.168.122.30 80 {              #LVS 配置，VIP
+        delay_loop 3                            #服务论询的时间间隔
+        lb_algo rr                              #LVS 调度算法
+        lb_kind DR                              #LVS 集群模式
+        protocol TCP
+        real_server 192.168.122.194 80 {
+                weight 1
+                TCP_CHECK {
+                        connect_timeout 3
+                        }
+                }
+        real_server 192.168.122.198 80 {
+                weight 1
+                TCP_CHECK {
+                        connect_timeout 3
+                        }
+                }
+}
+```
+
+##### lvs2
+
+
+
+```bash
+! Configuration File for keepalived
+global_defs {
+        router_id Director2    #两边不一样
+        }
+
+vrrp_instance VI_1 {
+        state BACKUP                            #另外一台机器是BACKUP
+        interface eth0                          #心跳网卡
+        virtual_router_id 51                    #虚拟路由编号，主备要一致
+        priority 90                             #优先级
+        advert_int 1                            #检查间隔，单位秒
+        authentication {
+                auth_type PASS
+                auth_pass 1111
+                }
+        virtual_ipaddress {
+                192.168.122.20/24 dev eth0      #VIP和工作端口
+                }
+        }
+
+virtual_server 192.168.122.20 80 {              #LVS 配置，VIP
+        delay_loop 3                            #服务论询的时间间隔
+        lb_algo rr                              #LVS 调度算法
+        lb_kind DR                              #LVS 集群模式
+        protocol TCP
+        real_server 192.168.122.194 80 {
+                weight 1
+                TCP_CHECK {
+                        connect_timeout 3
+                        }
+                }
+        real_server 192.168.122.198 80 {
+                weight 1
+                TCP_CHECK {
+                        connect_timeout 3
+                        }
+                }
+}
+
+
+vrrp_instance VI_2 {
+        state MASTER                            #另外一台机器是BACKUP
+        interface eth0                          #心跳网卡
+        virtual_router_id 55                    #虚拟路由编号，主备要一致
+        priority 100                            #优先级
+        advert_int 1                            #检查间隔，单位秒
+        authentication {
+                auth_type PASS
+                auth_pass 1111
+                }
+        virtual_ipaddress {
+                192.168.122.30/24 dev eth0      #VIP和工作端口
+                }
+        }
+
+virtual_server 192.168.122.30 80 {              #LVS 配置，VIP
+        delay_loop 3                            #服务论询的时间间隔
+        lb_algo rr                              #LVS 调度算法
+        lb_kind DR                              #LVS 集群模式
+        protocol TCP
+        real_server 192.168.122.194 80 {
+                weight 1
+                TCP_CHECK {
+                        connect_timeout 3
+                        }
+                }
+        real_server 192.168.122.198 80 {
+                weight 1
+                TCP_CHECK {
+                        connect_timeout 3
+                        }
+                }
+}
+```
+
+# web1        web2
+
+由于以下配置是永久配置生效，所以需要重启机器
+
+##### 安装服务
+
+
+
+```bash
+yum -y install httpd
+systemctl start httpd
+systemctl enable httpd
+```
+
+##### 配置虚拟网络
+
+cp /etc/sysconfig/network-scripts/{ifcfg-lo,ifcfg-lo:0}
+ vim /etc/sysconfig/network-scripts/ifcfg-lo:0
+
+##### 双主模式下配置：
+
+vim /etc/sysconfig/network-scripts/ifcfg-lo:1
+
+
+
+```undefined
+DEVICE=lo:0
+IPADDR=192.168.122.20
+NETMASK=255.255.255.255
+ONBOOT=yes
+其他行注释掉
+```
+
+##### 配置路由
+
+vim /etc/rc.local
+
+
+
+```csharp
+/sbin/route add host 192.168.122.20 dev lo:0
+/sbin/route add host 192.168.122.30 dev lo:1
+```
+
+##### 修改ARP
+
+vim /etc/sysctl.conf
+
+
+
+```cpp
+net.ipv4.conf.all.arp_ignore = 1
+net.ipv4.conf.all.arp_announce = 2
+net.ipv4.conf.default.arp_ignore = 1
+net.ipv4.conf.default.arp_announce = 2
+net.ipv4.conf.lo.arp_ignore = 1
+net.ipv4.conf.lo.arp_announce = 2
+```
+
+![img](https:////upload-images.jianshu.io/upload_images/14611979-71f2fd108be69e67.png?imageMogr2/auto-orient/strip|imageView2/2/w/1200/format/webp)
+

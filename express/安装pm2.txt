@@ -1,0 +1,51 @@
+ubuntu18.04 下安装nodejs以及pm2
+
+➢ 前提条件
+
+系统:ubuntu 18.04
+
+环境:纯净版无安装任何其他
+
+➢ 更新apt-get
+
+apt-get update
+
+
+➢ 安装nodeJs
+
+apt-get install nodejs
+
+
+➢ 检测node版本
+
+尽量是最新稳定版或者接近
+
+
+
+➢ 安装npm
+
+难道不应该是自带的吗?
+
+apt-get install npm
+检测npm
+
+npm --version
+
+
+➢ 安装pm2
+
+全局安装
+
+npm install -g pm2
+
+
+➢ 检测和查看pm2
+
+查看帮助,看到提示就说明成功了
+
+pm2 --help
+
+
+你还可以阅读以下文章:
+
+Ubuntu18.04 安装mysql

@@ -1,0 +1,122 @@
+linux版本：CentOS7 64位
+
+【yum 安装最新版nginx：https://www.cnblogs.com/xxoome/p/7256214.html】
+
+在安装nginx前首先要确认系统中安装了**gcc、pcre-devel、zlib-devel、openssl-devel**。
+
+Linux下检查是否安装过某软件包：http://www.cnblogs.com/xxoome/p/5866553.html
+
+安装命令：
+
+```
+yum -y install gcc pcre-devel zlib-devel openssl openssl-devel
+```
+
+nginx下载地址：https://nginx.org/download/
+
+下载“nginx-1.9.9.tar.gz”，移动到/usr/local/下。
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+## 解压
+tar -zxvf nginx-1.9.9.tar.gz
+
+##进入nginx目录
+cd nginx-1.9.9
+## 配置
+./configure --prefix=/usr/local/nginx
+
+# make
+make
+make install
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+OK，现在可以执行make 了。 
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912204045102-1191095711.png)
+
+执行make、make install命令
+
+测试是否安装成功
+
+```
+# cd到刚才配置的安装目录/usr/loca/nginx/
+./sbin/nginx -t
+```
+
+**错误信息**：
+
+nginx: [alert] could not open error log file: open() "/usr/local/nginx/logs/error.log" failed (2: No such file or directory)
+2016/09/13 19:08:56 [emerg] 6996#0: open() "/usr/local/nginx/logs/access.log" failed (2: No such file or directory)
+
+原因分析：nginx/目录下没有logs文件夹
+
+**解决方法**：
+
+```
+mkdir logs
+chmod 700 logs
+```
+
+正常情况的信息输出：
+
+nginx: the configuration file /usr/local/nginx/conf/nginx.conf syntax is ok
+nginx: configuration file /usr/local/nginx/conf/nginx.conf test is successful
+
+启动nginx 
+
+```
+cd /usr/local/nginx/sbin
+./nginx //启动nginx
+```
+
+在浏览器中输入服务器的ip地址，如：192.168.1.12
+
+很不幸，打不开链接。下面进行原因排查：
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912213840430-319772202.png)
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912213746523-1099882570.png)
+
+说明服务器的80端口是打不开的。
+
+因为我使用的linux系统版本是CentOS7，所以可以在服务器中执行如下命令来验证》》
+
+```
+firewall-cmd --query-port=80/tcp
+```
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912214039320-678377452.png)
+
+显然80端口没有开启。
+
+下面我们开启80端口：
+
+```
+firewall-cmd --add-port=80/tcp --permanent
+#重启防火墙
+systemctl restart firewalld
+```
+
+ --permanent  #永久生效，没有此参数重启后失效
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912214202805-665667010.png)
+
+刷新浏览器
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912214330648-1653107568.png)
+
+**====================== 分割线 ====================**
+
+配置完毕！
+
+2、配置nginx开机自启动
+
+```
+vim /etc/rc.d/rc.local
+```
+
+![img](https://images2015.cnblogs.com/blog/964175/201705/964175-20170521122817057-1077865607.png)

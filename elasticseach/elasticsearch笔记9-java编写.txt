@@ -1,0 +1,638 @@
+引入pom包
+
+```xml
+<dependencies>
+	    <dependency>
+	      <groupId>org.elasticsearch.client</groupId><!--elasticsearch客户端-->
+	      <artifactId>transport</artifactId>
+	      <version>6.6.0</version><!--自己的elasticsearch版本-->
+	    </dependency>    
+	    
+	    <dependency>
+	      <groupId>junit</groupId>
+	      <artifactId>junit</artifactId><!--用来测试-->
+	      <version>4.12</version>
+	      <scope>test</scope>
+	    </dependency>
+    </dependencies> 
+  
+	  <build>
+	      <plugins>
+				<!-- java编译插件 -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.2</version>
+					<configuration>
+						<source>1.8</source><!--jdk版本-->
+						<target>1.8</target>
+						<encoding>UTF-8</encoding>
+					</configuration>
+				</plugin>
+			</plugins>
+	  </build>
+```
+
+查找集群名称
+
+![image-20200420104154650](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200420104154650.png)
+
+```java
+package com.foam.test;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+import org.elasticsearch.action.get.GetResponse;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.transport.TransportAddress;
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
+import org.junit.Test;
+
+public class EsDemo {
+	//从es中查询数据
+	@Test
+	public void test1() throws UnknownHostException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.数据查询
+		GetResponse response=client.prepareGet("lib","user","1").execute().actionGet();//用get方式查询文档
+		
+		//4.得到查询的数据
+		System.out.print(response.getSourceAsString());
+		
+		//5.关闭客户端
+		client.close();
+	}
+}
+
+```
+
+**添加文档**
+
+```java
+@Test
+	public void test2() throws IOException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.添加文档
+			/*{
+			  "first_name":"Jane",
+			  "last_name":"Smith",
+			  "age":22,
+			  "about":"I like to collect rock albums",
+			  "interests":["music"]
+			}*/
+		XContentBuilder docs=XContentFactory.jsonBuilder()
+				.startObject()
+				.field("first_name", "Jane")
+				.field( "last_name","Smith")
+				.field( "age",22)
+				.field( "about","I like to collect rock albums")
+				.field( "data_time","2020-5-3")
+				.field( "interests","music")
+				.endObject();
+		//文档名称  文档类型  文档id
+		IndexResponse resopnses=client.prepareIndex("foam2","blog","10")
+				.setSource(docs).get();
+		
+		System.out.println(resopnses.status());
+	}
+```
+
+**删除文档**
+
+```java
+@Test
+	public void test3() throws IOException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.删除文档
+		DeleteResponse response=client.prepareDelete("foam2","blog","10").get();
+		
+		System.out.println(response);
+	}
+```
+
+**更新文档**
+
+```java
+@Test
+	public void test4() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.更新文档
+		UpdateRequest request=new UpdateRequest();
+		request.index("foam2")
+		.type("blog")
+		.id("10")
+		.doc(
+				XContentFactory.jsonBuilder()
+				.startObject()
+				.field("first_name", "Jane1")
+				.field( "last_name","Smith1")
+				.field( "age",221)
+				.endObject()
+				);
+		UpdateResponse response=client.update(request).get();
+		System.out.println(response);
+	}
+```
+
+**更新文档upsert**
+
+```java
+@Test
+	public void test5() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.添加文档
+		IndexRequest request1=new IndexRequest("foam2","blog","10").source(
+				XContentFactory.jsonBuilder()
+				.startObject()
+				.field("first_name", "Jane1")
+				.field( "last_name","Smith1")
+				.field( "age",221)
+				.endObject()
+				);
+		
+		//4.修改文档
+		UpdateRequest request2=new UpdateRequest("foam2","blog","10").doc(
+						XContentFactory.jsonBuilder()
+						.startObject()
+						.field("first_name", "Jane1")
+						.field( "last_name","Smith1")
+						.field( "age",331)
+						.endObject()
+						).upsert(request1);
+		UpdateResponse response=client.update(request2).get();
+		System.out.println(response);
+	}
+```
+
+**批量查询**
+
+```java
+@Test
+	public void test6() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.批量查询
+		MultiGetResponse response=client.prepareMultiGet()
+				.add("foam2","blog","10")
+				.add("lib","user","1").get();
+		
+		//4.遍历结果
+		for(MultiGetItemResponse item:response) {
+			GetResponse gr=item.getResponse();
+			if(gr!=null&&gr.isExists()) {
+				System.err.println(gr.getSourceAsString());
+			}
+		}
+	}
+```
+
+**bulk批量添加**
+
+```java
+@Test
+	public void test7() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.bulk批量操作
+		BulkRequestBuilder bulkBuild=client.prepareBulk();
+		
+		//4.批量添加
+		bulkBuild.add(client.prepareIndex("foam2","blog","11")
+				.setSource(XContentFactory.jsonBuilder()
+						.startObject()
+						.field("first_name", "java")
+						.field( "last_name","wen")
+						.field( "age",11)
+						.endObject()));
+		
+
+		bulkBuild.add(client.prepareIndex("foam2","blog","5")
+				.setSource(XContentFactory.jsonBuilder()
+						.startObject()
+						.field("first_name", "python")
+						.field( "last_name","esn")
+						.field( "age",31)
+						.endObject()));
+		
+		BulkResponse responses=bulkBuild.get();
+		System.out.println(responses.status());
+	}
+```
+
+**查询删除**
+
+```java
+@Test
+	public void test8() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.查询删除
+		BulkByScrollResponse response=DeleteByQueryAction.INSTANCE
+				.newRequestBuilder(client)
+				.filter(QueryBuilders.matchQuery("first_name", "java"))
+				.source("foam2")
+				.get();
+		//4.查询删除文档的个数
+		long counts=response.getDeleted();
+		System.out.println(counts);
+	}
+```
+
+**查询所有**
+
+```java
+@Test
+	public void test9() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.查询所有
+		QueryBuilder qb=QueryBuilders.matchAllQuery();
+		
+		//4.查询所有foam2分组下的数据，只展示3条
+		SearchResponse sr=client.prepareSearch("foam2")
+				.setQuery(qb)
+				.setSize(3).get();
+		SearchHits hits=sr.getHits();
+		
+		for(SearchHit hit:hits) {
+			System.out.println(hit.getSourceAsString());
+			Map<String,Object> map=hit.getSourceAsMap();
+			//5.把每条结果的属性遍历
+			for(String key:map.keySet()) {
+				System.out.println(key+"="+map.get(key));
+			}
+		}
+	}
+```
+
+**match查询**
+
+```java
+@Test
+	public void test10() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.match查询
+		QueryBuilder bulider=QueryBuilders.matchQuery("first_name", "python");
+		
+		SearchResponse response=client.prepareSearch("foam2")
+				.setQuery(bulider)
+				.setSize(3)
+				.get();
+		
+		SearchHits hits=response.getHits();
+		
+		for(SearchHit hit:hits) {
+			System.out.println(hit.getSourceAsString());
+			Map<String,Object> map=hit.getSourceAsMap();
+			//4.把每条结果的属性遍历
+			for(String key:map.keySet()) {
+				System.out.println(key+"="+map.get(key));
+			}
+		}
+	}
+```
+
+**multMatch批量查询**
+
+```java
+@Test
+	public void test11() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.multMatchQuery查询
+		QueryBuilder bulider=QueryBuilders.multiMatchQuery("python", "address","first_name");
+		
+		SearchResponse response=client.prepareSearch("foam2")
+				.setQuery(bulider)
+				.setSize(3)
+				.get();
+		
+		SearchHits hits=response.getHits();
+		
+		for(SearchHit hit:hits) {
+			System.out.println(hit.getSourceAsString());
+			Map<String,Object> map=hit.getSourceAsMap();
+			//4.把每条结果的属性遍历
+			for(String key:map.keySet()) {
+				System.out.println(key+"="+map.get(key));
+			}
+		}
+	}
+```
+
+**term查询**
+
+```java
+@Test
+	public void test12() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.term查询
+		QueryBuilder buil=QueryBuilders.termQuery("first_name","python");
+		
+		SearchResponse response=client.prepareSearch("foam2")
+				.setQuery(buil)
+				.setSize(3)
+				.get();
+		
+		SearchHits hits=response.getHits();
+		
+		for(SearchHit hit:hits) {
+			System.out.println(hit.getSourceAsString());
+			Map<String,Object> map=hit.getSourceAsMap();
+			//4.把每条结果的属性遍历
+			for(String key:map.keySet()) {
+				System.out.println(key+"="+map.get(key));
+			}
+		}
+	}
+```
+
+**terms查询**
+
+```java
+@Test
+	public void test13() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.terms查询
+		QueryBuilder buil=QueryBuilders.termsQuery("first_name","python","java");
+		
+		SearchResponse response=client.prepareSearch("foam2")
+				.setQuery(buil)
+				.setSize(3)
+				.get();
+		
+		SearchHits hits=response.getHits();
+		
+		for(SearchHit hit:hits) {
+			System.out.println(hit.getSourceAsString());
+			Map<String,Object> map=hit.getSourceAsMap();
+			//4.把每条结果的属性遍历
+			for(String key:map.keySet()) {
+				System.out.println(key+"="+map.get(key));
+			}
+		}
+	}
+```
+
+**范围查询**
+
+```java
+@Test
+	public void test14() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.范围查询
+		QueryBuilder buil=QueryBuilders.rangeQuery("price").from("25").to("35");
+		//4.日期查询
+		QueryBuilder buil1=QueryBuilders.rangeQuery("data").from("2019-5-6").to("2020-5-5").format("");
+        //5.prefix查询
+        QueryBuilder buil2=QueryBuilders.prefixQuery("name","zhao");
+        //6.模糊查询  wildcard查询
+        QueryBuilder buil3=QueryBuilders.wildcardQuery("name","zhao*");
+        //7.模糊查询 fuzzy查询
+        QueryBuilder buil4=QueryBuilders.fuzzyQuery("name","zha");
+        //8.type查询
+        QueryBuilder buil5=QueryBuilders.typeQuery("blog");
+        //9.ids查询
+        QueryBuilder buil5=QueryBuilders.idsQuery().addIds("1","3");
+        
+		SearchResponse response=client.prepareSearch("lib2")
+				.setQuery(buil)
+				.setSize(3)
+				.get();
+		
+		SearchHits hits=response.getHits();
+		
+		for(SearchHit hit:hits) {
+			System.out.println(hit.getSourceAsString());
+			Map<String,Object> map=hit.getSourceAsMap();
+			//4.把每条结果的属性遍历
+			for(String key:map.keySet()) {
+				System.out.println(key+"="+map.get(key));
+			}
+		}
+	}
+```
+
+**聚合操作**
+
+```java
+@Test
+	public void test15() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		/**3.聚合查询
+		AggregationBuilder agg=AggregationBuilders.max("addMax").field("price");//求年龄最大值
+		
+		SearchResponse response=client.prepareSearch("lib2")
+				.addAggregation(agg)
+				.get();
+		//4.获取年龄最大值
+		Max max=response.getAggregations().get("aggMax");
+		
+		System.out.println(max.getValue());*/
+		
+		/**3.聚合查询
+		AggregationBuilder agg=AggregationBuilders.min("addMin").field("price");//求年龄最大值
+		
+		SearchResponse response=client.prepareSearch("lib2")
+				.addAggregation(agg)
+				.get();
+		//4.获取年龄最小值
+		Min min=response.getAggregations().get("aggMin");
+		
+		System.out.println(min.getValue());*/
+		
+		/**3.聚合查询
+		AggregationBuilder agg=AggregationBuilders.avg("addAvg").field("price");//求年龄最大值
+		
+		SearchResponse response=client.prepareSearch("lib2")
+				.addAggregation(agg)
+				.get();
+		//4.获取年龄平均值
+		Avg avg=response.getAggregations().get("aggAvg");
+		
+		System.out.println(avg.getValue());*/
+		
+		/**3.聚合查询
+		AggregationBuilder agg=AggregationBuilders.sum("addSum").field("price");//求年龄最大值
+		
+		SearchResponse response=client.prepareSearch("lib2")
+				.addAggregation(agg)
+				.get();
+		//4.获取年龄总和
+		Sum sum=response.getAggregations().get("aggSum");
+		
+		System.out.println(sum.getValue());*/
+		
+		//3.聚合查询
+		AggregationBuilder agg=AggregationBuilders.cardinality("addCardinality").field("price");//求年龄最大值
+		
+		SearchResponse response=client.prepareSearch("lib2")
+				.addAggregation(agg)
+				.get();
+		//4.获取年龄基数
+		Cardinality cardinality=response.getAggregations().get("aggCardinality");
+		
+		System.out.println(cardinality.getValue());
+	}
+```
+
+**queryString查询**
+
+```java
+@Test
+	public void test16() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.精确查询
+		QueryBuilder buil=QueryBuilders.commonTermsQuery("name", "zhaoliu");
+		QueryBuilder buil2=QueryBuilders.queryStringQuery("+changger -hejiu");//查询包含changger但是不包含hejiu的文档
+		QueryBuilder buil3=QueryBuilders.simpleQueryStringQuery("+changger -hejiu");//查询基本包含的
+		SearchResponse response=client.prepareSearch("lib2")
+				.setQuery(buil)
+				.setSize(3)
+				.get();
+		
+		SearchHits hits=response.getHits();
+		
+		for(SearchHit hit:hits) {
+			System.out.println(hit.getSourceAsString());
+			Map<String,Object> map=hit.getSourceAsMap();
+			//4.把每条结果的属性遍历
+			for(String key:map.keySet()) {
+				System.out.println(key+"="+map.get(key));
+			}
+		}
+	}
+```
+
+**组合查询**
+
+```java
+@Test
+	public void test17() throws IOException, InterruptedException, ExecutionException {
+		//1.指定es集群
+		Settings settings =Settings.builder().put("cluster.name","my-application").build();//连接elasticsearch的集群名称
+		
+		//2.创建访问es服务器的客户端
+		TransportClient client=new PreBuiltTransportClient(settings)
+				.addTransportAddress(new TransportAddress(InetAddress.getByName("192.168.1.176"), 9300));//指定ip和端口
+		
+		//3.组合查询
+		QueryBuilder buil=QueryBuilders.boolQuery()
+				.must(QueryBuilders.matchQuery("interests", "changge"))//必须满足条件
+				.mustNot(QueryBuilders.matchQuery("interests", "lvyou"))//必须不满足条件
+				.should(QueryBuilders.matchQuery("address", "bei jing"))//或者
+				.filter(QueryBuilders.rangeQuery("brithday").gte("1990-01-01").format("yyyy-MM-dd"))//过滤  生日大于1990年
+				;
+		
+		//4.constantscore组合查询
+		QueryBuilder build=QueryBuilders.constantScoreQuery(QueryBuilders.matchQuery("interests", "changge"));
+        
+		SearchResponse response=client.prepareSearch("lib2")
+				.setQuery(buil)
+				.get();
+
+		SearchHits hits=response.getHits();
+		for(SearchHit hit:hits) {
+			System.out.println(hit.getSourceAsString());
+			Map<String,Object> map=hit.getSourceAsMap();
+			//4.把每条结果的属性遍历
+			for(String key:map.keySet()) {
+				System.out.println(key+"="+map.get(key));
+			}
+		}
+	}
+```
+

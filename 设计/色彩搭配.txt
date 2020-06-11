@@ -1,0 +1,28 @@
+![image-20200529160048466](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200529160048466.png)
+
+HEX模式和RGB模式
+color0: #011935__RGB(1,25,53)
+color1: #00343F__RGB(0,52,63)
+color2: #1DB0B8__RGB(29,176,184)
+color3: #37C6C0__RGB(55,198,192)
+color4: #D0E9FF__RGB(208,233,255)
+
+
+
+![image-20200529160107424](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200529160107424.png)
+
+HEX模式和RGB模式
+color0: #721532__RGB(114,21,50)
+color1: #8FA9D6__RGB(143,169,214)
+color2: #E0C0AB__RGB(224,192,171)
+color3: #323341__RGB(50,51,65)
+color4: #434664__RGB(67,70,100)
+
+![image-20200529160140849](C:\Users\12168\AppData\Roaming\Typora\typora-user-images\image-20200529160140849.png)
+
+HEX模式和RGB模式
+color0: #9DD3FA__RGB(157,211,250)
+color1: #1F6FB5__RGB(31,111,181)
+color2: #FCD692__RGB(252,214,146)
+color3: #FAFFEB__RGB(250,255,235)
+color4: #FFFFFF__RGB(255,255,255)

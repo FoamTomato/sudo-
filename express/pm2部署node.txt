@@ -1,0 +1,60 @@
+pm2 --name="server2" start npm -- run serve
+
+
+
+使用 pm2 可以让 Node 程序运行在后台，即使关闭命令行也可以继续运行。
+
+
+
+```bash
+npm i -g pm2
+```
+
+启动类似 `node xxx.js` 的项目
+
+
+
+```bash
+pm2 start --name xxxsname xxx.js  # 将运行的实例命名为 xxxsname
+```
+
+启动类似 `npm run serve` 的项目
+
+
+
+```bash
+pm2 start --name servename npm -- run serve
+```
+
+以配置文件的形式启动
+
+
+
+```bash
+pm2 start pm2config.json
+```
+
+配置文件如下
+
+
+
+```bash
+{
+  "apps": [{
+    "name": "appname", # 应用名
+    "exec_interpreter": "node", # 执行环境
+    "script": "./b.js", # 要执行的脚本
+    "cwd": "/home/uftp/test-pm2", # 项目路径
+    "exec_mode": "fork",
+    "max_memory_restart": "1G",
+    "autorestart": true, # 出错自动重启
+    "node_args": [],
+    "error_file" : "./test-err.log", # 错误日志文件位置
+    "out_file": "./test-out.log",  # 输出日志文件位置
+    "pid_file": "./test.pid",  # 进程相关文件位置
+    "args": [],
+    "env": {
+    }
+  }]
+}
+```

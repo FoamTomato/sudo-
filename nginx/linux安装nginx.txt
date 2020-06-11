@@ -1,0 +1,264 @@
+linux版本：CentOS7 64位
+
+【yum 安装最新版nginx：https://www.cnblogs.com/xxoome/p/7256214.html】
+
+在安装nginx前首先要确认系统中安装了**gcc、pcre-devel、zlib-devel、openssl-devel**。
+
+Linux下检查是否安装过某软件包：http://www.cnblogs.com/xxoome/p/5866553.html
+
+安装命令：
+
+```
+yum -y install gcc pcre-devel zlib-devel openssl openssl-devel
+```
+
+nginx下载地址：https://nginx.org/download/
+
+下载“nginx-1.9.9.tar.gz”，移动到/usr/local/下。
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+## 解压
+tar -zxvf nginx-1.9.9.tar.gz
+
+##进入nginx目录
+cd nginx-1.9.9
+## 配置
+./configure --prefix=/usr/local/nginx
+
+# make
+make
+make install
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+OK，现在可以执行make 了。 
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912204045102-1191095711.png)
+
+执行make、make install命令
+
+测试是否安装成功
+
+```
+# cd到刚才配置的安装目录/usr/loca/nginx/
+./sbin/nginx -t
+```
+
+**错误信息**：
+
+nginx: [alert] could not open error log file: open() "/usr/local/nginx/logs/error.log" failed (2: No such file or directory)
+2016/09/13 19:08:56 [emerg] 6996#0: open() "/usr/local/nginx/logs/access.log" failed (2: No such file or directory)
+
+原因分析：nginx/目录下没有logs文件夹
+
+**解决方法**：
+
+```
+mkdir logs
+chmod 700 logs
+```
+
+正常情况的信息输出：
+
+nginx: the configuration file /usr/local/nginx/conf/nginx.conf syntax is ok
+nginx: configuration file /usr/local/nginx/conf/nginx.conf test is successful
+
+启动nginx 
+
+```
+cd /usr/local/nginx/sbin
+./nginx //启动nginx
+```
+
+在浏览器中输入服务器的ip地址，如：192.168.1.12
+
+很不幸，打不开链接。下面进行原因排查：
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912213840430-319772202.png)
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912213746523-1099882570.png)
+
+说明服务器的80端口是打不开的。
+
+因为我使用的linux系统版本是CentOS7，所以可以在服务器中执行如下命令来验证》》
+
+```
+firewall-cmd --query-port=80/tcp
+```
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912214039320-678377452.png)
+
+显然80端口没有开启。
+
+下面我们开启80端口：
+
+```
+firewall-cmd --add-port=80/tcp --permanent
+#重启防火墙
+systemctl restart firewalld
+```
+
+ --permanent  #永久生效，没有此参数重启后失效
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912214202805-665667010.png)
+
+刷新浏览器
+
+  ![img](https://images2015.cnblogs.com/blog/964175/201609/964175-20160912214330648-1653107568.png)
+
+**====================== 分割线 ====================**
+
+配置完毕！
+
+2、配置nginx开机自启动
+
+```
+vim /etc/rc.d/rc.local
+```
+
+![img](https://images2015.cnblogs.com/blog/964175/201705/964175-20170521122817057-1077865607.png)
+
+ **一：开启Nginx的SSL模块**
+
+Nginx如果未开启SSL模块，配置Https时提示如下错误：
+
+```
+nginx: [emerg] the "ssl" parameter requires ngx_http_ssl_module in /usr/local/nginx/conf/nginx.conf
+```
+
+*解释：nginx缺少http_ssl_module模块，需要在已安装的nginx中添加ssl模块。*
+
+说明：我的nginx安装目录为：/usr/local/nginx ， 源码包在/usr/src/nginx-1.5.9目录
+
+ 
+
+Nginx开启SSL模块：
+
+切换到源码包：
+
+```
+cd /usr/src/nginx-1.5.9
+```
+
+ 
+
+查看nginx原有的模块
+
+```
+/usr/local/nginx/sbin/nginx -V
+```
+
+ 
+
+ *在configure arguments:后面显示的原有的configure参数如下：*
+
+```
+--prefix=/usr/local/nginx --with-http_stub_status_module
+```
+
+ 
+
+**二：从新配置SSL模块：**
+进入nginx源码包目录，运行：
+
+```
+./configure --prefix=/usr/local/nginx --with-http_stub_status_module --with-http_ssl_module
+```
+
+ 
+
+配置完成后，运行命令make命令：
+
+```
+make
+```
+
+注意：此处不能进行make install，否则就是覆盖安装
+
+ 
+
+**三：替换已安装好的nginx包**
+替换之前先备份：
+
+```
+cp /usr/local/nginx/sbin/nginx /usr/local/nginx/sbin/nginx.bak
+```
+
+ 
+
+先停止nginx服务：
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+//查询nginx主进程号
+$ ps -ef | grep nginx
+
+//从容停止Nginx：
+$kill -QUIT 主进程号
+
+//快速停止Nginx：
+kill -TERM 主进程号
+
+//强制停止Nginx：
+pkill -9 nginx
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+ 
+
+将刚刚编译好的nginx覆盖掉原有的nginx
+
+```
+cp ./objs/nginx /usr/local/nginx/sbin/
+```
+
+ 
+
+然后启动nginx，仍可以通过命令查看是否已经加入成功
+
+```
+/usr/local/nginx/sbin/nginx -V
+```
+
+ 
+
+此时应该显示为即配置成功：
+
+```
+configure arguments: --prefix=/usr/local/nginx --with-http_stub_status_module --with-http_ssl_module
+```
+
+ 
+
+补充：
+
+nginx配置ssl，支持https的配置：
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+server {
+        listen       443 ssl;
+        server_name  aa.abc.com;
+
+        ssl_certificate      cert/2643408_xxx.pem;
+        ssl_certificate_key  cert/2643408_xxx.key;
+
+        ssl_session_cache    shared:SSL:1m;
+        ssl_session_timeout  5m;
+
+        ssl_ciphers  HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers  on;
+
+        location / {
+            proxy_pass http://127.0.0.1:8886;
+        }
+    }
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)

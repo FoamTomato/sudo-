@@ -1,0 +1,352 @@
+### CRUL命令
+
+以命令的方式执行HTTP协议的请求GET/POST/PUT/DELETE
+
+实例：访问一个网页
+
+curl	www.baidu.com
+
+curl	-o	tt.html	www.baidu.com
+
+显示响应的头信息
+
+curl -i www.baidu.com
+
+显示一次HTTP请求的通信过程
+
+curl -v www.baidu.com
+
+执行GET/POST/PUT/DELETE操作
+
+curl	-X	GET/POST/PUT/DELETE	url
+
+**启动报错**
+
+解决方式1   bin/elasticsearch -Des.insecure.allow.root=true   //允许root用户启动
+
+解决方式2 
+
+这是出于系统安全考虑设置的条件。由于ElasticSearch可以接收用户输入的脚本并且执行，为了系统安全考虑，建议创建一个单独的用户用来允许ElasticSearch
+
+**创建用户组和用户**
+
+groupadd	esgroup
+
+useradd	esuser	-g	esgroup	-p	espassword
+
+**更改elasticsearch文件夹及内部文件的所属用户及组**
+
+cd	/opt
+
+chown	-R	esuser.esgroup	elasticsearch-6.2.4
+
+**切换用户并运行**
+
+su	esuser
+
+./bin/elasticsearch
+
+```cmake
+elasticsearch远程访问
+
+切换到root用户    
+1、vi /etc/security/limits.conf 修改如下配置
+* soft nofile 65536
+* hard nofile 131072
+* soft nproc 2048
+* hard nproc 4096
+ 
+2、vi /etc/security/limits.d/90-nproc.conf   修改如下配置
+* soft nproc 2048
+ 
+3、vi /etc/sysctl.conf 添加配置
+vm.max_map_count=655360 
+运行命令 sysctl -p
+```
+
+**环境：**
+
+CentOS7 Elasticsearch-6.3.2　　JDK8
+
+ 
+
+**准备：**
+
+JDK8 下载地址：http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html
+
+Elasticsearch-6.3.2下载地址： https://www.elastic.co/downloads/elasticsearch
+
+ 
+
+**安装：**
+
+**jdk安装**
+
+<1>删除open jdk，没有的话则不需要
+
+```
+rpm -qa|grep java 
+rpm -e nodeps <name> 
+```
+
+<2>解压jdk包
+
+```
+mkdir /usr/jdk
+tar -xvf jdk-8u112-linux-x64.tar.gz /usr/jdk
+```
+
+　　*32的JDK需要安装 glibc.i686*
+
+　　*yum install glibc.i686*
+
+<3>配置环境变量
+
+```
+vim /etc/profile
+```
+
+添加以下内容(JAVA_HOME为jdk安装目录)
+
+   \#set java environment  
+
+   export JAVA_HOME=/usr/jdk/jdk1.8.0_112 
+
+   export PATH=$JAVA_HOME/bin:$PATH
+
+   export CLASSPATH=.:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar
+
+保存退出，使更改配置生效
+
+```
+source /etc/profile
+```
+
+<4>查看jdk安装是否成功
+
+```
+java-version
+```
+
+如下图则OK
+
+![img](https://images2018.cnblogs.com/blog/969723/201808/969723-20180807100423073-1273714408.png)
+
+ 
+
+ **Elasticsearch安装**
+
+<1>解压elasticsearch安装包 (安装在 /opt/elasticsearch/elasticsearch-6.3.2/)
+
+```
+unzip elasticsearch-6.3.2.zip
+```
+
+ <2>创建elasticsearch用户，root用户启动elasticsearch会失败
+
+```
+groupadd elsearch
+useradd elsearch -g elsearch
+chown -R elsearch:elsearch /opt/elasticsearch/elasticsearch-6.3.2/
+```
+
+ <3>创建elasticsearch数据文件和日志文件
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+mkdir /data
+
+chown -R elsearch:elsearch /data/
+
+su  elsearch
+
+mkdir -p es/data
+
+mkdir -p es/logs
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+<4>修改配置文件elasticsearch.yml
+
+![img](https://images2018.cnblogs.com/blog/969723/201808/969723-20180807141140107-280339003.png)
+
+<5>启动并查看，需要使用非root用户启动
+
+```
+[elsearch@imok bin]$ ./elasticsearch -d
+```
+
+查看是否启动成功： curl http://自己配置的IP地址:9200/ 
+
+如下图表示安装OK
+
+![img](https://images2018.cnblogs.com/blog/969723/201808/969723-20180807141826530-1125056858.png)
+
+ 
+
+**安装Head插件**
+
+由于head插件本质上还是一个nodejs的工程，因此需要安装node，使用npm来安装依赖的包。
+
+<1>安装Node.js
+
+下载解压
+
+```
+wget https://nodejs.org/dist/v6.10.2/node-v6.10.2-linux-x64.tar.xz
+xz –d node-v6.10.2-linux-x64.tar.xz
+tar xvf node-v6.10.2-linux-x64.tar
+mv node-v6.10.2-linux-x64 /usr/local/node
+```
+
+ 配置并生效
+
+```
+vim /etc/profile
+export NODE_HOME=/usr/local/node
+export PATH=$PATH:$NODE_HOME/bin
+
+source /etc/profile
+```
+
+查看版本验证
+
+```
+[elsearch@imok bin]$ node -v
+v6.10.2
+[elsearch@imok bin]$ npm -v
+3.10.10
+```
+
+<2>下载head插件
+
+如果未安装git ，则先安装git工具
+
+```
+yum install –y git
+
+git clone https://github.com/mobz/elasticsearch-head.git
+```
+
+Centos下使用：yum install git -y  或者  yum install -y git Ubuntu/Debian下使用 ： apt-get install git -y
+
+<3>安装grunt
+
+```
+cd elasticsearch-head
+npm install -g grunt --registry=https://registry.npm.taobao.org
+```
+
+<4>安装插件
+
+```
+npm install
+```
+
+*在elasticsearch-head目录下node_modules/grunt下如果没有grunt二进制程序，需要执行：*
+
+npm install grunt --save 
+
+<5>修改配置 elasticsearch-head下Gruntfile.js文件
+
+修改connect配置节点
+
+![img](https://images2018.cnblogs.com/blog/969723/201808/969723-20180808135255854-397386573.png)
+
+修改 _site/app.js 修改http://localhost:9200字段到本机ES端口与IP
+
+ ![img](https://images2018.cnblogs.com/blog/969723/201808/969723-20180808135653133-708174991.png)
+
+ <6>修改 elasticsearch配置文件 
+
+ 修改elasticsearch.yml文件加入以下内容：
+
+```
+# 是否支持跨域
+http.cors.enabled: true
+
+# *表示支持所有域名
+http.cors.allow-origin: "*"
+```
+
+![img](https://images2018.cnblogs.com/blog/969723/201808/969723-20180808135838136-1385270717.png)
+
+<7>启动head插件服务（后台运行）
+
+```
+/elasticsearch-head/node_modules/grunt/bin/grunt server &
+```
+
+ ![img](https://images2018.cnblogs.com/blog/969723/201808/969723-20180808141220489-1714321872.png)
+
+<8>查看
+
+如下图说明安装OK
+
+![img](https://images2018.cnblogs.com/blog/969723/201808/969723-20180808140315108-1195000316.png)
+
+ 
+
+**安装中文分词器**
+
+中文分词器的版本和elasticsearch的版本要一致。随笔中安装的是6.3.2版本
+
+```
+$ ./bin/elasticsearch-plugin install https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v6.3.2/elasticsearch-analysis-ik-6.3.2.zip
+```
+
+ 安装OK后重启elasticsearch服务
+
+ 
+
+**安装过程遇到的问题：**
+
+[1]: max file descriptors [4096] for elasticsearch process is too low, increase to at least [65536]
+
+解决：vim /etc/security/limits.conf ，在文件末尾添加以下参数 （* 要带上）
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+```
+* soft nofile 65536
+
+* hard nofile 131072
+
+* soft nproc 2048
+
+* hard nproc 4096
+```
+
+[![复制代码](https://common.cnblogs.com/images/copycode.gif)](javascript:void(0);)
+
+ulimit -n查看进程数
+
+ 
+
+[2]: max virtual memory areas vm.max_map_count [65530] is too low, increase to at least [262144]
+
+解决：修改 /etc/sysclt.conf配置
+
+```
+vi /etc/sysctl.conf
+```
+
+添加一下配置参数
+
+```
+vm.max_map_count=655360
+```
+
+ 执行命令
+
+```
+sysctl -p
+```
+
+ 
+
+ 
+
+重启elasticsearch服务即可。

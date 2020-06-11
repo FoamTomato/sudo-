@@ -1,0 +1,97 @@
+在您当前的项目目录下，运行 
+
+```javascript
+npm install nodemon --save
+```
+
+### 在 Ubuntu 上用 node express 搭建简易服务器
+
+1. 安装好 node 和 npm，能正常显示版本号，证明安装成功
+
+```js
+node -v
+v10.13.0
+npm -v
+6.4.1
+```
+
+使用 express 应用程序生成器
+
+> 通过应用生成器工具`express-generator`可以快速创建一个应用的骨架。
+
+```text
+npm install express-generator -g
+```
+
+[Express 应用程序生成器 | Express 中文文档](https://link.zhihu.com/?target=http%3A//www.expressjs.com.cn/starter/generator.html)
+
+\3. 创建一个应用并初始化
+
+```text
+express mywebsite
+cd mywebsite
+npm i
+```
+
+\4. 运行网站
+
+在 mywebsite 目录下运行：
+
+```text
+node bin/www
+```
+
+如果你是在 windows 上，应该可以打开浏览器访问 `127.0.0.1:3000` ，那么本文章也算看完了。
+
+如果是在云服务器上，请继续往下看。
+
+我用的阿里云服务器，一时不知道怎么才能访问，直接输入 IP 地址也没用，查了一下才知道需要添加安全组的配置规则。
+
+![img](https://pic4.zhimg.com/80/v2-0fe1b5143cf91cb30e763db5fc91be8f_720w.jpg)安全组
+
+点击「安全组配置」，进入「配置规则」，点击「添加安全组规则」。
+
+![img](https://pic2.zhimg.com/80/v2-b91716e15cdf12e9aec25e2dd77c1331_720w.jpg)添加安全组规则
+
+红框圈住的两个地方，我们创建的 express 应用默认使用 3000 端口，所以第一个框里填写了 3000 （这个端口可以在 bin 目录下的 www 文件中修改），第二个框里的 `0.0.0.0/0` 表示所有 IP 都可以访问我们设置的这个端口。
+
+设置好之后，再次运行：
+
+```text
+node bin/www
+```
+
+这个时候去访问你的云服务器 IP 加上 3000 端口，应该就可以直接访问到了。内容如下：
+
+![img](https://pic3.zhimg.com/80/v2-ec2097a41335f8be98d51d7096fd546e_720w.jpg)访问成功时出来的内容
+
+\5. 不用 pm2 有一点不美
+
+在上一步中我们运行了：
+
+```text
+node bin/www
+```
+
+在网站能够访问的同时，结果是我们无法在终端做其他操作了……
+
+这就很不美了。
+
+于是我们需要用到 pm2 ，你先不用管 pm2 是什么，装就完了。
+
+安装 pm2：
+
+```text
+npm install pm2 -g
+```
+
+然后执行：
+
+```text
+pm2 start ./bin/www --watch
+```
+
+这里用了`--watch` 参数，表示当你的 express 应用代码发生变化时，pm2 会帮你重启服务。
+
+与此同时，我们发现，终端解放了出来，我们可以快乐地进行其他操作了。
+
